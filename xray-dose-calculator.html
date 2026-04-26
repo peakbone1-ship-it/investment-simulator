@@ -4,6 +4,103 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>X線被ばく線量推計システム v2.0</title>
+<style>
+/* ============================================================
+   パスワード保護オーバーレイ
+   ============================================================ */
+#pw-overlay{
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#1a365d 0%,#2a4a7f 60%,#2b6cb0 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+#pw-box{
+  background:#fff;border-radius:16px;padding:40px 36px;
+  width:340px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;
+}
+#pw-logo{font-size:2.8rem;margin-bottom:10px}
+#pw-title{font-size:1.1rem;font-weight:700;color:#1a365d;margin-bottom:4px}
+#pw-subtitle{font-size:.75rem;color:#718096;margin-bottom:24px}
+#pw-input{
+  width:100%;padding:11px 14px;border:2px solid #e2e8f0;border-radius:8px;
+  font-size:1rem;text-align:center;letter-spacing:.2em;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+#pw-input:focus{border-color:#4299e1;box-shadow:0 0 0 3px rgba(66,153,225,.2)}
+#pw-btn{
+  width:100%;margin-top:14px;padding:12px;
+  background:linear-gradient(135deg,#2b6cb0,#3182ce);
+  color:#fff;border:none;border-radius:8px;
+  font-size:.95rem;font-weight:700;cursor:pointer;
+  transition:all .2s;letter-spacing:.5px;
+}
+#pw-btn:hover{background:linear-gradient(135deg,#1a365d,#2b6cb0);transform:translateY(-1px)}
+#pw-btn:active{transform:translateY(0)}
+#pw-error{
+  margin-top:12px;padding:8px 12px;border-radius:7px;
+  background:#fff5f5;border:1px solid #feb2b2;
+  color:#c53030;font-size:.8rem;display:none;
+}
+#pw-hint{margin-top:16px;font-size:.68rem;color:#a0aec0;line-height:1.6}
+</style>
+<script>
+/* ============================================================
+   パスワード保護 — SHA-256ハッシュ照合（Web Crypto API）
+   パスワードを変更する場合:
+     1. 新しいパスワードのSHA-256ハッシュを取得
+     2. 下記 PW_HASH の値を書き換える
+   ============================================================ */
+const PW_HASH = '42b51e701627e1b009fac2d87980d8958341fee1b6ea39dacb8b7c2996f95486'; // DRL2025
+
+const SESSION_KEY = 'xray_calc_auth';
+
+async function sha256(str){
+  const buf  = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPassword(){
+  const inp = document.getElementById('pw-input').value;
+  if(!inp){ shakeInput(); return; }
+  const hash = await sha256(inp);
+  if(hash === PW_HASH){
+    sessionStorage.setItem(SESSION_KEY,'1');
+    const ov = document.getElementById('pw-overlay');
+    ov.style.opacity='0';ov.style.transition='opacity .4s';
+    setTimeout(()=>ov.remove(),400);
+  } else {
+    const errEl = document.getElementById('pw-error');
+    errEl.style.display='block';
+    errEl.textContent='パスワードが正しくありません。';
+    shakeInput();
+    document.getElementById('pw-input').value='';
+    setTimeout(()=>{ errEl.style.display='none'; },3000);
+  }
+}
+
+function shakeInput(){
+  const el=document.getElementById('pw-input');
+  el.style.animation='none';
+  el.offsetHeight; // reflow
+  el.style.animation='shake .3s ease';
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  if(sessionStorage.getItem(SESSION_KEY)==='1'){
+    document.getElementById('pw-overlay').remove();
+    return;
+  }
+  document.getElementById('pw-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter') checkPassword();
+  });
+});
+</script>
+<style>
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%,60%{transform:translateX(-6px)}
+  40%,80%{transform:translateX(6px)}
+}
+</style>
 <script>
 /* Chart.js 4.4.0 - bundled for offline use */
 /**
@@ -123,6 +220,24 @@ body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN','Yu Gothic',
 </style>
 </head>
 <body>
+
+<!-- ============================================================
+     パスワード保護オーバーレイ
+     ============================================================ -->
+<div id="pw-overlay">
+  <div id="pw-box">
+    <div id="pw-logo">☢</div>
+    <div id="pw-title">X線被ばく線量推計システム</div>
+    <div id="pw-subtitle">アクセスにはパスワードが必要です</div>
+    <input id="pw-input" type="password" placeholder="パスワードを入力" autocomplete="current-password">
+    <button id="pw-btn" onclick="checkPassword()">ログイン</button>
+    <div id="pw-error"></div>
+    <div id="pw-hint">
+      パスワードは施設の管理者にお問い合わせください。<br>
+      セッション中は再入力不要です。
+    </div>
+  </div>
+</div>
 
 <div class="app-header">
   <div>
