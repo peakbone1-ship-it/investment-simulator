@@ -1,0 +1,13 @@
+# 一時ファイル・スクリプト
+embed_chartjs.ps1
+chart.umd.min.js
+
+# エディタ・OS
+.vscode/
+Thumbs.db
+.DS_Store
+*.tmp
+*.bak
+
+# Claude Code 設定（任意：共有したい場合は削除）
+# .claude/
