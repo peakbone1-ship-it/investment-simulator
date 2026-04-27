@@ -1175,9 +1175,10 @@ function siVal(v){
   return (v*1e9).toFixed(0);
 }
 function siUnit(v,base){
-  if(v>=0.001)    return 'm'+base;
-  if(v>=0.000001) return 'μ'+base;
-  return 'n'+base;
+  if(v>=0.1)       return 'm'+base;   // >=0.1 mGy/mSv → m単位
+  if(v>=0.001)     return 'μ'+base;   // 0.001-0.1 → siValが×1000するのでμ単位
+  if(v>=0.000001)  return 'n'+base;   // 0.001未満 → siValが×1e6するのでn単位
+  return 'p'+base;
 }
 function fmtD(v,base){ return siVal(v)+' '+siUnit(v,base); }
 
