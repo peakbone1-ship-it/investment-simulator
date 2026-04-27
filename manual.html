@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X線被ばく線量推計システム — 計算方法・根拠マニュアル</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;scroll-behavior:smooth}
+body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo',sans-serif;
+     background:#f7fafc;color:#1a202c;line-height:1.8}
+
+/* ヘッダー */
+.app-header{background:linear-gradient(135deg,#1a365d 0%,#2a4a7f 50%,#2b6cb0 100%);
+  color:#fff;padding:20px 40px;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.app-header h1{font-size:1.4rem;font-weight:700}
+.app-header p{font-size:.8rem;opacity:.8;margin-top:4px}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);
+  border-radius:20px;padding:3px 12px;font-size:.7rem}
+
+/* レイアウト */
+.layout{display:grid;grid-template-columns:260px 1fr;gap:0;max-width:1200px;margin:0 auto;padding:24px 16px}
+
+/* 目次 */
+.toc{position:sticky;top:20px;align-self:start;background:#fff;border-radius:10px;
+  padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:.8rem;max-height:90vh;overflow-y:auto}
+.toc h2{font-size:.9rem;font-weight:700;color:#2c5282;margin-bottom:12px;padding-bottom:8px;
+  border-bottom:2px solid #ebf4ff}
+.toc ol{padding-left:16px}
+.toc li{margin-bottom:6px}
+.toc a{color:#4a5568;text-decoration:none;transition:color .15s}
+.toc a:hover{color:#2b6cb0}
+.toc .sub{padding-left:12px;margin-top:4px;list-style:disc;font-size:.75rem}
+
+/* 本文 */
+.content{padding-left:24px}
+section{margin-bottom:40px}
+h2.sec{font-size:1.2rem;font-weight:700;color:#1a365d;border-left:4px solid #3182ce;
+  padding-left:12px;margin-bottom:16px;margin-top:8px}
+h3.subsec{font-size:1rem;font-weight:700;color:#2c5282;margin:20px 0 10px;
+  padding-bottom:4px;border-bottom:1px solid #e2e8f0}
+h4.para{font-size:.9rem;font-weight:700;color:#4a5568;margin:14px 0 6px}
+p{margin-bottom:10px;font-size:.88rem}
+
+/* 数式ボックス */
+.formula{background:#edf2f7;border:1px solid #e2e8f0;border-left:4px solid #3182ce;
+  border-radius:6px;padding:14px 18px;margin:12px 0;font-family:'Courier New',monospace;
+  font-size:.9rem;color:#1a365d;overflow-x:auto}
+.formula .comment{color:#718096;font-family:inherit;font-size:.82rem}
+
+/* テーブル */
+table{width:100%;border-collapse:collapse;font-size:.82rem;margin:12px 0}
+th{background:#2b6cb0;color:#fff;padding:8px 10px;text-align:left;font-weight:600}
+td{padding:7px 10px;border-bottom:1px solid #e2e8f0}
+tr:nth-child(even) td{background:#f7fafc}
+tr:hover td{background:#ebf8ff}
+.tab-sm th{background:#4a5568;font-size:.78rem;padding:6px 8px}
+.tab-sm td{font-size:.78rem;padding:5px 8px}
+
+/* 強調ボックス */
+.info-box{background:#ebf8ff;border:1px solid #90cdf4;border-left:4px solid #3182ce;
+  border-radius:7px;padding:12px 16px;margin:12px 0;font-size:.83rem}
+.warn-box{background:#fffbeb;border:1px solid #f6e05e;border-left:4px solid #d69e2e;
+  border-radius:7px;padding:12px 16px;margin:12px 0;font-size:.83rem}
+.limit-box{background:#fff5f5;border:1px solid #feb2b2;border-left:4px solid #e53e3e;
+  border-radius:7px;padding:12px 16px;margin:12px 0;font-size:.83rem}
+.green-box{background:#f0fff4;border:1px solid #9ae6b4;border-left:4px solid #38a169;
+  border-radius:7px;padding:12px 16px;margin:12px 0;font-size:.83rem}
+.box-title{font-weight:700;margin-bottom:6px}
+
+/* 変数説明 */
+.var-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;margin:8px 0 12px;font-size:.83rem}
+.var-name{font-family:monospace;font-weight:700;color:#2b6cb0;white-space:nowrap}
+.var-desc{color:#4a5568}
+
+/* 参考文献 */
+.ref-list{list-style:none;padding:0}
+.ref-list li{padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:.82rem;line-height:1.6}
+.ref-list li:last-child{border-bottom:none}
+.ref-num{display:inline-block;background:#2b6cb0;color:#fff;border-radius:50%;
+  width:20px;height:20px;text-align:center;line-height:20px;font-size:.72rem;
+  font-weight:700;margin-right:8px;flex-shrink:0}
+
+@media print{
+  .toc{display:none}
+  .layout{grid-template-columns:1fr;padding:0}
+  .content{padding-left:0}
+  .app-header{background:#1a365d!important;-webkit-print-color-adjust:exact}
+  section{page-break-inside:avoid}
+}
+@media(max-width:800px){
+  .layout{grid-template-columns:1fr}
+  .toc{position:static;max-height:none}
+  .content{padding-left:0;margin-top:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>☢ X線被ばく線量推計システム — 計算方法・根拠マニュアル</h1>
+  <p>Version 2.0　|　Japan DRL 2025対応　|　ICRP Pub.103準拠</p>
+  <div class="badge-row">
+    <span class="badge">ICRP Publication 103 (2007)</span>
+    <span class="badge">Japan DRL 2025</span>
+    <span class="badge">NRPB-SR262 (1994)</span>
+    <span class="badge">Shrimpton 2006</span>
+    <span class="badge">IPEM Report 91 (2000)</span>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- 目次 -->
+<nav class="toc">
+  <h2>📋 目次</h2>
+  <ol>
+    <li><a href="#s1">ソフトウェアの概要</a></li>
+    <li><a href="#s2">共通の基礎概念</a>
+      <ul class="sub">
+        <li><a href="#s2-1">実効線量と臓器線量</a></li>
+        <li><a href="#s2-2">組織荷重係数</a></li>
+        <li><a href="#s2-3">年齢補正係数</a></li>
+      </ul>
+    </li>
+    <li><a href="#s3">一般X線撮影の計算</a>
+      <ul class="sub">
+        <li><a href="#s3-1">ESD計算（撮影条件）</a></li>
+        <li><a href="#s3-2">ESD計算（DAP入力）</a></li>
+        <li><a href="#s3-3">ESD直接入力</a></li>
+        <li><a href="#s3-4">臓器線量・実効線量</a></li>
+        <li><a href="#s3-5">照射野の扱い</a></li>
+      </ul>
+    </li>
+    <li><a href="#s4">CT検査の計算</a>
+      <ul class="sub">
+        <li><a href="#s4-1">実効線量（DLP法）</a></li>
+        <li><a href="#s4-2">臓器線量</a></li>
+        <li><a href="#s4-3">小児CT・年齢別DRL</a></li>
+      </ul>
+    </li>
+    <li><a href="#s5">診断透視の計算</a></li>
+    <li><a href="#s6">マンモグラフィ</a></li>
+    <li><a href="#s7">パノラマX線撮影</a></li>
+    <li><a href="#s8">診断参考レベル（DRL）</a></li>
+    <li><a href="#s9">計算の限界と注意事項</a></li>
+    <li><a href="#s10">参考文献</a></li>
+  </ol>
+</nav>
+
+<!-- 本文 -->
+<div class="content">
+
+<!-- ===== 1. 概要 ===== -->
+<section id="s1">
+<h2 class="sec">1. ソフトウェアの概要</h2>
+
+<p>本ソフトウェアは、X線診断検査における患者被ばく線量（臓器吸収線量・実効線量）を、公表された変換係数テーブルを用いて簡易推計するWebアプリケーションです。</p>
+
+<div class="info-box">
+  <div class="box-title">💡 推計の位置づけ</div>
+  本ツールはモンテカルロ法による個人化計算（PCXMC等）とは異なる<strong>簡易推計ツール</strong>です。標準的な体型・照射条件を前提とした変換係数を使用するため、結果は参考値として取り扱ってください。
+</div>
+
+<h3 class="subsec">対応モードと使用指標</h3>
+<table>
+  <tr><th>モード</th><th>主要な入力値</th><th>線量指標</th><th>DRL出典</th></tr>
+  <tr><td>📷 一般X線撮影</td><td>kVp / mAs / FSD<br>またはDAP / ESD</td><td>ESD・実効線量・臓器線量</td><td>Japan DRL 2025 表3.2</td></tr>
+  <tr><td>🔄 CT検査</td><td>CTDIvol / DLP</td><td>実効線量・臓器線量</td><td>Japan DRL 2025 表3.1.1/3.1.2</td></tr>
+  <tr><td>🔬 診断透視</td><td>Ka,r / KAP / 透視時間</td><td>実効線量・臓器線量</td><td>Japan DRL 2025 表3.6.1/3.6.3</td></tr>
+  <tr><td>🩻 マンモグラフィ</td><td>DG（平均乳腺線量）</td><td>DG vs DRL比較</td><td>Japan DRL 2025 表3.3</td></tr>
+  <tr><td>🦷 パノラマ撮影</td><td>PKA / DWP</td><td>PKA・DWP vs DRL比較</td><td>Japan DRL 2025 表3.4.2</td></tr>
+</table>
+</section>
+
+<!-- ===== 2. 共通概念 ===== -->
+<section id="s2">
+<h2 class="sec">2. 共通の基礎概念</h2>
+
+<h3 class="subsec" id="s2-1">2.1 実効線量と臓器線量</h3>
+
+<p>放射線被ばくによる確率的影響（発がんリスク等）を評価するために用いる量が<strong>実効線量 E（単位：Sv）</strong>です。実効線量は各臓器の等価線量 H<sub>T</sub> を、臓器ごとの放射線感受性を表す組織荷重係数 w<sub>T</sub> で重みづけして合算します。</p>
+
+<div class="formula">
+E = Σ<sub>T</sub> w<sub>T</sub> × H<sub>T</sub>
+<br>
+<span class="comment">// E: 実効線量[Sv], w_T: 組織荷重係数, H_T: 臓器等価線量[Sv]</span>
+</div>
+
+<p>X線（光子線）の放射線荷重係数 w<sub>R</sub> = 1 であるため、吸収線量（Gy）と等価線量（Sv）は数値的に等しくなります。</p>
+
+<h3 class="subsec" id="s2-2">2.2 組織荷重係数（w<sub>T</sub>）</h3>
+
+<p>ICRP Publication 103（2007年）に基づく組織荷重係数を使用します。</p>
+
+<table class="tab-sm">
+  <tr><th>臓器・組織</th><th>w<sub>T</sub></th><th>臓器・組織</th><th>w<sub>T</sub></th></tr>
+  <tr><td>赤色骨髄</td><td>0.12</td><td>膀胱</td><td>0.04</td></tr>
+  <tr><td>結腸</td><td>0.12</td><td>食道</td><td>0.04</td></tr>
+  <tr><td>肺</td><td>0.12</td><td>肝臓</td><td>0.04</td></tr>
+  <tr><td>胃</td><td>0.12</td><td>甲状腺</td><td>0.04</td></tr>
+  <tr><td>乳腺</td><td>0.12</td><td>骨表面</td><td>0.01</td></tr>
+  <tr><td>生殖腺</td><td>0.08</td><td>脳</td><td>0.01</td></tr>
+  <tr><td>残余組織</td><td>0.12</td><td>唾液腺</td><td>0.01</td></tr>
+  <tr><td colspan="2"></td><td>皮膚</td><td>0.01</td></tr>
+  <tr><td colspan="2"></td><td>合計</td><td><strong>1.00</strong></td></tr>
+</table>
+
+<p style="font-size:.78rem;color:#718096;margin-top:4px">出典: ICRP Publication 103, Annals of the ICRP 37(2-4), 2007.</p>
+
+<h3 class="subsec" id="s2-3">2.3 年齢補正係数</h3>
+
+<p>小児は体が小さく臓器間距離が短いため、同じ入射線量でも臓器線量が高くなります。本ツールでは成人値に対する年齢別補正係数を乗じて臓器線量を補正します。</p>
+
+<table class="tab-sm">
+  <tr><th>年齢区分</th><th>補正係数</th><th>根拠</th></tr>
+  <tr><td>成人（≥16歳）</td><td>1.00（基準）</td><td rowspan="6">Hart D, Wall BF. NRPB-R318, 2002.<br>IAEA Safety Reports Series No.57, 2007.</td></tr>
+  <tr><td>15歳</td><td>1.20</td></tr>
+  <tr><td>10歳</td><td>1.55</td></tr>
+  <tr><td>5歳</td><td>2.10</td></tr>
+  <tr><td>1歳</td><td>3.00</td></tr>
+  <tr><td>新生児（0歳）</td><td>4.00</td></tr>
+</table>
+
+<div class="warn-box">
+  <div class="box-title">⚠ 注意</div>
+  年齢補正係数は全臓器に一律に適用する簡易補正です。実際には臓器ごとに異なる補正が必要であり、本ツールの小児線量推計は概算値です。
+</div>
+</section>
+
+<!-- ===== 3. 一般X線撮影 ===== -->
+<section id="s3">
+<h2 class="sec">3. 一般X線撮影の計算方法</h2>
+
+<h3 class="subsec" id="s3-1">3.1 ESD計算：撮影条件入力（kVp / mAs / FSD）</h3>
+
+<h4 class="para">計算式</h4>
+<div class="formula">
+ESD (mGy) = K(kVp) × mAs × BSF / FSD(m)²
+</div>
+
+<div class="var-grid">
+  <span class="var-name">ESD</span><span class="var-desc">入射表面線量 Entrance Surface Dose [mGy]（バックスキャッタ含む）</span>
+  <span class="var-name">K(kVp)</span><span class="var-desc">管電圧に対応する管出力 [mGy/mAs at 1m]（下表参照）</span>
+  <span class="var-name">mAs</span><span class="var-desc">管電流量 [mAs]</span>
+  <span class="var-name">BSF</span><span class="var-desc">バックスキャッタ係数 Backscatter Factor（下表参照）</span>
+  <span class="var-name">FSD(m)</span><span class="var-desc">焦点-皮膚間距離 Focus to Skin Distance [m]（入力値 cm ÷ 100）</span>
+</div>
+
+<h4 class="para">管出力テーブル K(kVp)</h4>
+<p>IPEM Report 91（2000年）に基づく典型値（内蔵フィルタ含む有効フィルタ 2.5 mmAl 相当）を使用します。</p>
+
+<table class="tab-sm">
+  <tr><th>kVp</th><th>K (mGy/mAs@1m)</th><th>kVp</th><th>K (mGy/mAs@1m)</th><th>kVp</th><th>K (mGy/mAs@1m)</th></tr>
+  <tr><td>50</td><td>0.013</td><td>80</td><td>0.067</td><td>110</td><td>0.187</td></tr>
+  <tr><td>60</td><td>0.026</td><td>90</td><td>0.099</td><td>120</td><td>0.245</td></tr>
+  <tr><td>70</td><td>0.043</td><td>100</td><td>0.139</td><td>130</td><td>0.313</td></tr>
+  <tr><td>75</td><td>0.054</td><td>105</td><td>0.162</td><td>140</td><td>0.390</td></tr>
+</table>
+<p style="font-size:.78rem;color:#718096">中間値は線形補間で算出。出典: Sutton DG, Williams JR. IPEM Report 91, 2000.</p>
+
+<h4 class="para">バックスキャッタ係数（BSF）</h4>
+<p>患者体内から散乱して入射面に戻る光子の寄与を表す係数です。</p>
+
+<table class="tab-sm">
+  <tr><th>管電圧</th><th>BSF</th></tr>
+  <tr><td>&lt; 55 kVp</td><td>1.22</td></tr>
+  <tr><td>55–69 kVp</td><td>1.28</td></tr>
+  <tr><td>70–84 kVp</td><td>1.33</td></tr>
+  <tr><td>85–99 kVp</td><td>1.37</td></tr>
+  <tr><td>100–114 kVp</td><td>1.40</td></tr>
+  <tr><td>≥ 115 kVp</td><td>1.42</td></tr>
+</table>
+<p style="font-size:.78rem;color:#718096">出典: Petoussi-Henss N et al. Phys Med Biol 43 (1998) 2237–2250.</p>
+
+<h3 class="subsec" id="s3-2">3.2 ESD計算：DAP入力</h3>
+
+<p>DAPメーター（線量面積積計）の読み値からESDを逆算します。</p>
+
+<div class="formula">
+ESD (mGy) = DAP (mGy·cm²) × BSF / [照射野幅(cm) × 照射野高さ(cm)]
+<br>
+<span class="comment">// 入力単位が μGy·m² の場合: DAP(mGy·cm²) = DAP(μGy·m²) × 100</span>
+</div>
+
+<div class="info-box">
+  <div class="box-title">💡 DAPとESDの関係</div>
+  DAP は X線管直下（自由空気中）の空気カーマ面積積です。BSF を乗じることで体表面での後方散乱を含むESDに変換します。
+</div>
+
+<h3 class="subsec" id="s3-3">3.3 ESD直接入力</h3>
+<p>線量計で実測したESD値（バックスキャッタ含む表面線量）を直接入力します。計算はそのまま臓器線量・実効線量の推計に使用されます。</p>
+
+<h3 class="subsec" id="s3-4">3.4 臓器線量・実効線量の計算</h3>
+
+<h4 class="para">臓器線量</h4>
+<div class="formula">
+H<sub>T</sub> (mGy) = c<sub>T</sub> × ESD (mGy) × f<sub>age</sub>
+</div>
+
+<div class="var-grid">
+  <span class="var-name">H_T</span><span class="var-desc">臓器Tの吸収線量 [mGy]</span>
+  <span class="var-name">c_T</span><span class="var-desc">規格化臓器線量係数（organ_dose/ESD）[無次元]</span>
+  <span class="var-name">f_age</span><span class="var-desc">年齢補正係数（2.3節参照）</span>
+</div>
+
+<p>規格化臓器線量係数 c<sub>T</sub> は <strong>NRPB-SR262（Hart et al. 1994）</strong> のモンテカルロシミュレーションに基づく値で、各検査の典型的な照射条件（照射野サイズ・照射方向・体型）を前提としています。主要な係数を以下に示します。</p>
+
+<table class="tab-sm">
+  <tr><th>検査</th><th>肺</th><th>胃</th><th>乳腺</th><th>食道</th><th>甲状腺</th><th>骨髄</th></tr>
+  <tr><td>胸部正面PA</td><td>0.248</td><td>0.021</td><td>0.092</td><td>0.112</td><td>0.053</td><td>0.041</td></tr>
+  <tr><td>腹部正面AP</td><td>0.010</td><td>0.198</td><td>0.005</td><td>0.011</td><td>0.001</td><td>0.062</td></tr>
+  <tr><td>腰椎正面AP</td><td>0.005</td><td>0.079</td><td>0.002</td><td>0.005</td><td>0.001</td><td>0.088</td></tr>
+  <tr><td>骨盤正面AP</td><td>0.002</td><td>0.009</td><td>0.001</td><td>0.001</td><td>0.001</td><td>0.099</td></tr>
+  <tr><td>頭部正面PA</td><td>0.001</td><td>0.001</td><td>0.001</td><td>0.005</td><td>0.010</td><td>0.015</td></tr>
+</table>
+<p style="font-size:.78rem;color:#718096">出典: Hart D, Jones DG, Wall BF. NRPB-SR262, NRPB Chilton (1994).</p>
+
+<h4 class="para">実効線量</h4>
+<div class="formula">
+E (mSv) = Σ<sub>T</sub> w<sub>T</sub> × H<sub>T</sub>
+</div>
+
+<h3 class="subsec" id="s3-5">3.5 照射野の扱いについて</h3>
+
+<div class="warn-box">
+  <div class="box-title">⚠ 重要：照射野の前提条件</div>
+  <p>「撮影条件」入力では照射野サイズを直接入力しません。c<sub>T</sub> 係数は各検査の<strong>標準的な照射野</strong>を前提としたモンテカルロ計算値です。</p>
+  <table class="tab-sm" style="margin-top:8px">
+    <tr><th>検査</th><th>想定照射野（概算）</th></tr>
+    <tr><td>胸部正面・腹部</td><td>35 × 43 cm（受像器面）</td></tr>
+    <tr><td>腰椎・胸椎正面</td><td>24 × 30 cm</td></tr>
+    <tr><td>頭部・頸椎</td><td>18〜24 × 24 cm</td></tr>
+  </table>
+  <p style="margin-top:8px">実際の照射野が標準値と大きく異なる場合は<strong>DAP入力</strong>の使用を推奨します。</p>
+</div>
+</section>
+
+<!-- ===== 4. CT ===== -->
+<section id="s4">
+<h2 class="sec">4. CT検査の計算方法</h2>
+
+<h3 class="subsec" id="s4-1">4.1 実効線量（DLP法）</h3>
+
+<p>CT検査の実効線量は線量長積（DLP）と換算係数 k を用いた DLP法で推計します。</p>
+
+<div class="formula">
+E (mSv) = k (mSv/mGy·cm) × DLP (mGy·cm)
+</div>
+
+<p>換算係数 k は検査部位・年齢によって異なります。</p>
+
+<table class="tab-sm">
+  <tr><th>検査部位</th><th>成人</th><th>15歳</th><th>10歳</th><th>5歳</th><th>1歳</th><th>0歳</th></tr>
+  <tr><td>頭部</td><td>0.0023</td><td>0.0032</td><td>0.0040</td><td>0.0057</td><td>0.0091</td><td>0.011</td></tr>
+  <tr><td>頸部</td><td>0.0054</td><td>0.0072</td><td>0.0086</td><td>0.011</td><td>0.017</td><td>0.022</td></tr>
+  <tr><td>胸部</td><td>0.017</td><td>0.022</td><td>0.026</td><td>0.030</td><td>0.039</td><td>0.050</td></tr>
+  <tr><td>腹部・骨盤</td><td>0.015</td><td>0.020</td><td>0.024</td><td>0.029</td><td>0.038</td><td>0.049</td></tr>
+</table>
+<p style="font-size:.78rem;color:#718096">出典: Shrimpton PC et al. Br J Radiol 79 (2006) 277–285. Bongartz G et al. EUR 16262 EN (2004). AAPM Report 96 (2008)（小児）.</p>
+
+<h3 class="subsec" id="s4-2">4.2 臓器線量</h3>
+
+<div class="formula">
+H<sub>T</sub> (mGy) = r<sub>T</sub> × CTDIvol × f<sub>age</sub>
+</div>
+
+<div class="var-grid">
+  <span class="var-name">r_T</span><span class="var-desc">臓器-CTDIvol 換算比（organ_dose / CTDIvol）[無次元]</span>
+  <span class="var-name">CTDIvol</span><span class="var-desc">体積CT線量指標 [mGy]（装置コンソール表示値、32 cmファントム基準）</span>
+</div>
+
+<p>r<sub>T</sub> は ImPACT CT Dosimetry Tool および Huda W et al.（Med Phys, 1997）のデータに基づく近似値です。</p>
+
+<div class="info-box">
+  <div class="box-title">💡 CTDIvol と DLP の関係</div>
+  DLP = CTDIvol × スキャン長（cm）<br>
+  CTDIvol は単位長さあたりの線量、DLP はスキャン全体の積算線量です。実効線量推計には DLP 法（4.1節）を、臓器線量推計には CTDIvol を使用します。
+</div>
+
+<h3 class="subsec" id="s4-3">4.3 小児CT・年齢別診断参考レベル</h3>
+
+<p>患者年齢区分を「成人」以外に設定した場合、Japan DRL 2025 表3.1.2（小児CT年齢別DRL）が自動的に適用されます。</p>
+
+<table class="tab-sm">
+  <tr><th>年齢区分（本ツール）</th><th>DRL 2025 年齢区分</th><th>頭部 CTDIvol / DLP</th><th>胸部 CTDIvol / DLP</th></tr>
+  <tr><td>新生児・1歳</td><td>0-&lt;1歳</td><td>27 mGy / 460 mGy·cm</td><td>2.0 mGy / 50 mGy·cm</td></tr>
+  <tr><td>5歳</td><td>1-&lt;5歳</td><td>34 mGy / 610 mGy·cm</td><td>3.0 mGy / 80 mGy·cm</td></tr>
+  <tr><td>10歳</td><td>5-&lt;10歳</td><td>44 mGy / 810 mGy·cm</td><td>4.0 mGy / 120 mGy·cm</td></tr>
+  <tr><td>15歳</td><td>10-&lt;15歳</td><td>55 mGy / 1000 mGy·cm</td><td>6.0 mGy / 230 mGy·cm</td></tr>
+  <tr><td>成人</td><td>成人（≥16歳）</td><td>67 mGy / 1260 mGy·cm</td><td>11 mGy / 430 mGy·cm</td></tr>
+</table>
+</section>
+
+<!-- ===== 5. 透視 ===== -->
+<section id="s5">
+<h2 class="sec">5. 診断透視の計算方法</h2>
+
+<h3 class="subsec">5.1 実効線量</h3>
+<div class="formula">
+E (mSv) = (E/Ka,r) × Ka,r
+</div>
+
+<div class="var-grid">
+  <span class="var-name">E/Ka,r</span><span class="var-desc">実効線量-参照空気カーマ換算係数 [mSv/mGy]（検査別に設定）</span>
+  <span class="var-name">Ka,r</span><span class="var-desc">参照点における空気カーマ [mGy]（装置表示値または実測値）</span>
+</div>
+
+<table class="tab-sm">
+  <tr><th>検査種別</th><th>E/Ka,r</th><th>Ka,r DRL</th><th>KAP DRL</th></tr>
+  <tr><td>嚥下造影</td><td>0.10</td><td>16 mGy</td><td>6.5 Gy·cm²</td></tr>
+  <tr><td>食道・胃・十二指腸造影</td><td>0.12</td><td>77 mGy</td><td>21 Gy·cm²</td></tr>
+  <tr><td>イレウス管挿入</td><td>0.12</td><td>80 mGy</td><td>47 Gy·cm²</td></tr>
+  <tr><td>大腸（注腸）造影</td><td>0.15</td><td>93 mGy</td><td>41 Gy·cm²</td></tr>
+  <tr><td>ERCP</td><td>0.10</td><td>110 mGy</td><td>28 Gy·cm²</td></tr>
+  <tr><td>気管支鏡検査</td><td>0.15</td><td>27 mGy</td><td>7.4 Gy·cm²</td></tr>
+  <tr><td>CVC挿入術</td><td>0.12</td><td>7.6 mGy</td><td>3.2 Gy·cm²</td></tr>
+  <tr><td>腰椎神経根ブロック</td><td>0.08</td><td>22 mGy</td><td>5.5 Gy·cm²</td></tr>
+  <tr><td>腰椎脊髄腔造影</td><td>0.10</td><td>47 mGy</td><td>18 Gy·cm²</td></tr>
+  <tr><td>胃X線検診（対策型）</td><td>0.12</td><td>39 mGy</td><td>設定なし</td></tr>
+  <tr><td>胃X線検診（任意型）</td><td>0.12</td><td>55 mGy</td><td>設定なし</td></tr>
+</table>
+<p style="font-size:.78rem;color:#718096">E/Ka,r 出典: Ruiz-Cruces R et al. Radiat Prot Dosimetry 168(3), 2016. DRL出典: Japan DRL 2025 表3.6.1/3.6.3.</p>
+
+<h3 class="subsec">5.2 臓器線量の正規化</h3>
+<p>透視では各検査の相対的な臓器線量比（organCoeff）を設定し、実効線量 E を満たすよう正規化して各臓器線量を逆算します。</p>
+
+<div class="formula">
+H<sub>T</sub> = (rel<sub>T</sub> / Σ(w<sub>T</sub>·rel<sub>T</sub>)) × E × f<sub>age</sub>
+<br>
+<span class="comment">// rel_T: 臓器Tの相対線量係数, Σ(w_T·rel_T): 全臓器の正規化定数</span>
+</div>
+
+<p>この計算により Σ w<sub>T</sub>·H<sub>T</sub> ≡ E が保証されます。</p>
+</section>
+
+<!-- ===== 6. マンモ ===== -->
+<section id="s6">
+<h2 class="sec">6. マンモグラフィ</h2>
+
+<p>マンモグラフィでは臓器線量の内訳計算は行わず、<strong>平均乳腺線量 DG（Average Glandular Dose）</strong>を主要な線量指標として Japan DRL 2025 と比較します。</p>
+
+<table class="tab-sm">
+  <tr><th>種別</th><th>DRL 2025（DG上限）</th></tr>
+  <tr><td>2Dマンモグラフィ（臨床データ）</td><td>1.4 mGy</td></tr>
+  <tr><td>DBT（臨床データ）</td><td>1.6 mGy</td></tr>
+  <tr><td>PMMA 40mm（ファントム測定）</td><td>2.2 mGy</td></tr>
+</table>
+<p style="font-size:.78rem;color:#718096">出典: Japan DRL 2025 表3.3. Dance DR et al. Phys Med Biol 45 (2000).</p>
+
+<div class="info-box">
+  <div class="box-title">💡 DGを使用する理由</div>
+  マンモグラフィは乳腺のみを対象とした専用検査です。ESDや実効線量よりもDG（乳腺への実際の吸収線量）がリスク評価に適しており、国際的にも標準指標として使用されます。
+</div>
+</section>
+
+<!-- ===== 7. パノラマ ===== -->
+<section id="s7">
+<h2 class="sec">7. パノラマX線撮影</h2>
+
+<p>パノラマ撮影では以下の2指標を Japan DRL 2025 と比較します。</p>
+
+<table class="tab-sm">
+  <tr><th>指標</th><th>定義</th><th>DRL 2025</th></tr>
+  <tr><td>PKA（面積空気カーマ積）</td><td>Kerma-Area Product [mGy·cm²]</td><td>≤ 130 mGy·cm²</td></tr>
+  <tr><td>DWP（線量幅積）</td><td>Dose-Width Product [mGy·mm]</td><td>≤ 91 mGy·mm</td></tr>
+</table>
+<p style="font-size:.78rem;color:#718096">出典: Japan DRL 2025 表3.4.2.</p>
+
+<p>パノラマ撮影の実効線量は約 0.01〜0.03 mSv と低く、本ツールでは参考表示のみとしています。</p>
+</section>
+
+<!-- ===== 8. DRL ===== -->
+<section id="s8">
+<h2 class="sec">8. 診断参考レベル（DRL）との比較</h2>
+
+<h3 class="subsec">8.1 診断参考レベルとは</h3>
+<p>診断参考レベル（Diagnostic Reference Level: DRL）は、医療被ばく管理の目安値として設定される線量の参照値です。「この値を超えてはならない上限値」ではなく、「自施設の線量が全国調査の上位25%を超えていないか確認するための指標」です。</p>
+
+<div class="green-box">
+  <div class="box-title">✅ Japan DRL 2025 について</div>
+  日本放射線技術学会・日本医学放射線学会が 2025年に公表した日本の診断参考レベル（第3版）です。全国調査データに基づき、各検査の線量の第75パーセンタイル値として設定されています。
+</div>
+
+<h3 class="subsec">8.2 各モードのDRL指標と出典</h3>
+<table>
+  <tr><th>モード</th><th>DRL指標</th><th>出典（表番号）</th></tr>
+  <tr><td>一般X線撮影</td><td>Ka,e（入射空気カーマ）[mGy]</td><td>表3.2</td></tr>
+  <tr><td>成人CT</td><td>CTDIvol [mGy] および DLP [mGy·cm]</td><td>表3.1.1</td></tr>
+  <tr><td>小児CT</td><td>CTDIvol [mGy] および DLP [mGy·cm]（年齢別）</td><td>表3.1.2</td></tr>
+  <tr><td>マンモグラフィ</td><td>DG（平均乳腺線量）[mGy]</td><td>表3.3</td></tr>
+  <tr><td>パノラマ撮影</td><td>PKA [mGy·cm²]、DWP [mGy·mm]</td><td>表3.4.2</td></tr>
+  <tr><td>診断透視（据置形）</td><td>Ka,r [mGy]、KAP [Gy·cm²]、透視時間 [分]</td><td>表3.6.1</td></tr>
+  <tr><td>胃X線検診</td><td>Ka,r [mGy]、透視時間 [分]、撮影回数 [回]</td><td>表3.6.3</td></tr>
+</table>
+
+<h3 class="subsec">8.3 DRL比率の表示色の意味</h3>
+<table class="tab-sm">
+  <tr><th>色</th><th>DRL比率</th><th>意味</th></tr>
+  <tr><td style="background:#f0fff4;color:#276749">🟢 緑</td><td>75%未満</td><td>DRL を大きく下回っている</td></tr>
+  <tr><td style="background:#fffbeb;color:#7b4f12">🟡 橙</td><td>75〜100%</td><td>DRL に近い（要注意）</td></tr>
+  <tr><td style="background:#fff5f5;color:#742a2a">🔴 赤</td><td>100%超</td><td>DRL を超過（線量低減を検討）</td></tr>
+</table>
+</section>
+
+<!-- ===== 9. 限界 ===== -->
+<section id="s9">
+<h2 class="sec">9. 計算の限界と注意事項</h2>
+
+<div class="limit-box">
+  <div class="box-title">⚠ 以下の点をご理解の上ご使用ください</div>
+  <ol style="padding-left:18px;margin-top:8px;font-size:.83rem;line-height:2">
+    <li><strong>標準体型の前提：</strong>係数は標準的な成人体型（身長170cm、体重70kg程度）を前提としています。肥満・るいそうの患者では実際の線量が大きく異なる場合があります。</li>
+    <li><strong>標準照射野の前提：</strong>撮影条件入力では各検査の標準照射野を想定した係数を使用します（3.5節参照）。</li>
+    <li><strong>性別の影響：</strong>乳腺線量について男性は女性の1/100として近似しています。</li>
+    <li><strong>小児の年齢補正：</strong>年齢別に一律の補正係数を適用する簡易法です。臓器ごとの個別補正は行っていません。</li>
+    <li><strong>PCXMCとの違い：</strong>本ツールは変換係数テーブルによる簡易推計です。個人の解剖学的特徴を考慮したモンテカルロ計算（PCXMC等）とは精度が異なります。</li>
+    <li><strong>使用目的：</strong>本ツールは教育・管理目的の参考推計ツールです。法的な放射線管理記録・臨床判断への使用は対象外です。</li>
+  </ol>
+</div>
+
+<h3 class="subsec">PCXMCとの比較</h3>
+<table class="tab-sm">
+  <tr><th>項目</th><th>本ツール</th><th>PCXMC（参考）</th></tr>
+  <tr><td>計算方法</td><td>変換係数テーブル参照</td><td>モンテカルロ法（個人化）</td></tr>
+  <tr><td>体型の考慮</td><td>標準体型のみ</td><td>身長・体重を考慮</td></tr>
+  <tr><td>照射野</td><td>標準照射野を想定</td><td>実際の照射野を入力</td></tr>
+  <tr><td>使いやすさ</td><td>ブラウザで即時計算</td><td>専用ソフト（Windows）</td></tr>
+  <tr><td>費用</td><td>無料</td><td>有償</td></tr>
+  <tr><td>用途</td><td>簡易推計・管理参考</td><td>詳細な個人推計</td></tr>
+</table>
+</section>
+
+<!-- ===== 10. 文献 ===== -->
+<section id="s10">
+<h2 class="sec">10. 参考文献</h2>
+
+<ul class="ref-list">
+  <li><span class="ref-num">1</span><strong>ICRP Publication 103.</strong> The 2007 Recommendations of the International Commission on Radiological Protection. Annals of the ICRP 37(2-4), Elsevier, 2007.<br>
+  <em>→ 使用箇所: 組織荷重係数 w<sub>T</sub>、リスク係数（5.5×10⁻²/Sv）</em></li>
+
+  <li><span class="ref-num">2</span><strong>Hart D, Jones DG, Wall BF.</strong> Estimation of effective dose in diagnostic radiology from entrance surface dose and dose-area product measurements. NRPB-SR262, National Radiological Protection Board, Chilton, 1994.<br>
+  <em>→ 使用箇所: X線規格化臓器線量係数 c<sub>T</sub>（15臓器・17検査部位）</em></li>
+
+  <li><span class="ref-num">3</span><strong>Hart D, Wall BF.</strong> Radiation exposure of the UK population from medical and dental X-ray examinations. NRPB-R318, National Radiological Protection Board, Chilton, 2002.<br>
+  <em>→ 使用箇所: 年齢補正係数（小児/成人比）</em></li>
+
+  <li><span class="ref-num">4</span><strong>Shrimpton PC, Wall BF, Jones DG, Fisher ES.</strong> A national survey of doses to patients undergoing a selection of routine X-ray examinations in England. NRPB-SR279, NRPB, Chilton, 2000.<br>
+  <em>→ 使用箇所: 成人標準値の補完</em></li>
+
+  <li><span class="ref-num">5</span><strong>Petoussi-Henss N, Zankl M, Drexler G, Panzer W, Regulla D.</strong> Calculation of backscatter factors for diagnostic radiology using Monte Carlo methods. Physics in Medicine and Biology 43 (1998) 2237–2250.<br>
+  <em>→ 使用箇所: バックスキャッタ係数（BSF）</em></li>
+
+  <li><span class="ref-num">6</span><strong>Sutton DG, Williams JR.</strong> Radiation Shielding for Diagnostic X-Rays. IPEM Report 91, Institute of Physics and Engineering in Medicine, York, 2000.<br>
+  <em>→ 使用箇所: 管電圧別管出力 K(kVp)（2.5 mmAl実効フィルタ相当）</em></li>
+
+  <li><span class="ref-num">7</span><strong>Shrimpton PC, Hillier MC, Lewis MA, Dunn M.</strong> National survey of doses from CT in the UK: 2003. British Journal of Radiology 79 (2006) 277–285.<br>
+  <em>→ 使用箇所: CT実効線量換算係数 k（DLP法、成人）</em></li>
+
+  <li><span class="ref-num">8</span><strong>Bongartz G et al.</strong> European Guidelines for Multislice Computed Tomography. European Commission EUR 16262 EN, 2004.<br>
+  <em>→ 使用箇所: CT線量指標の定義・換算</em></li>
+
+  <li><span class="ref-num">9</span><strong>AAPM Report 96.</strong> The Measurement, Reporting, and Management of Radiation Dose in CT. AAPM Task Group 23, American Association of Physicists in Medicine, 2008.<br>
+  <em>→ 使用箇所: 小児CT k係数</em></li>
+
+  <li><span class="ref-num">10</span><strong>IAEA Safety Reports Series No. 57.</strong> Dosimetry in Diagnostic Radiology: An International Code of Practice. International Atomic Energy Agency, Vienna, 2007.<br>
+  <em>→ 使用箇所: 小児年齢補正の参照</em></li>
+
+  <li><span class="ref-num">11</span><strong>Ruiz-Cruces R et al.</strong> Patient dose in common radiological procedures: correlations and strategies for optimization. Radiation Protection Dosimetry 168(3), 2016.<br>
+  <em>→ 使用箇所: 透視 E/Ka,r 換算係数</em></li>
+
+  <li><span class="ref-num">12</span><strong>Dance DR et al.</strong> Additional factors for the estimation of mean glandular breast dose using the UK, European and IAEA breast dosimetry protocols. Physics in Medicine and Biology 45 (2000) 3225–3240.<br>
+  <em>→ 使用箇所: マンモグラフィ平均乳腺線量 DG の定義</em></li>
+
+  <li><span class="ref-num">13</span><strong>EUREF.</strong> European Protocol on Dosimetry in Mammography, 3rd Edition, 2013.<br>
+  <em>→ 使用箇所: DBT線量評価の参照</em></li>
+
+  <li><span class="ref-num">14</span><strong>日本放射線技術学会・日本医学放射線学会.</strong> 日本の診断参考レベル（2025年版）. 日本放射線技術学会, 2025.<br>
+  <em>→ 使用箇所: 全DRL値（表3.1.1, 3.1.2, 3.2, 3.3, 3.4.2, 3.6.1, 3.6.3）</em></li>
+
+  <li><span class="ref-num">15</span><strong>ICRP Publication 85.</strong> Avoidance of Radiation Injuries from Medical Interventional Procedures. Annals of the ICRP 30(2), 2000.<br>
+  <em>→ 使用箇所: 透視 Ka,r の定義・管理基準</em></li>
+</ul>
+
+<div style="margin-top:32px;padding:16px;background:#f7fafc;border-radius:8px;font-size:.78rem;color:#718096;text-align:center;border:1px solid #e2e8f0">
+  X線被ばく線量推計システム v2.0　マニュアル<br>
+  Japan DRL 2025 対応 | ICRP Pub.103 準拠<br>
+  計算の詳細・最新情報は各参考文献を参照してください
+</div>
+</section>
+
+</div><!-- /content -->
+</div><!-- /layout -->
+
+</body>
+</html>
