@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シフト作成アプリ</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Meiryo', 'メイリオ', sans-serif; background: #f0f4f8; color: #222; font-size: 14px; }
+header { background: #1e40af; color: white; padding: 12px 20px; }
+header h1 { font-size: 18px; font-weight: bold; }
+.tabs { display: flex; background: #1d3a8c; padding: 0 12px; }
+.tab-btn { padding: 10px 18px; color: rgba(255,255,255,0.65); cursor: pointer;
+  border-bottom: 3px solid transparent; font-size: 14px;
+  background: none; border-top: none; border-left: none; border-right: none; }
+.tab-btn:hover { color: white; }
+.tab-btn.active { color: white; border-bottom-color: #93c5fd; }
+.page { display: none; padding: 20px; max-width: 1300px; margin: 0 auto; }
+.page.active { display: block; }
+.card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.card-title { font-size: 15px; font-weight: bold; color: #1e40af;
+  margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #dbeafe; }
+.form-row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 13px; color: #555; }
+input[type=text], input[type=number], select {
+  border: 1px solid #d1d5db; border-radius: 4px; padding: 6px 8px; font-size: 14px; }
+input[type=number] { width: 80px; }
+.btn { padding: 8px 16px; border: none; border-radius: 5px;
+  cursor: pointer; font-size: 13px; font-weight: 500; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-green { background: #059669; color: white; }
+.btn-green:hover { background: #047857; }
+.btn-red { background: #dc2626; color: white; }
+.btn-red:hover { background: #b91c1c; }
+.btn-gray { background: #6b7280; color: white; }
+.btn-gray:hover { background: #4b5563; }
+.btn-orange { background: #d97706; color: white; }
+.btn-orange:hover { background: #b45309; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-xs { padding: 3px 7px; font-size: 11px; }
+table.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { background: #eff6ff; color: #1e40af; padding: 8px 6px;
+  border: 1px solid #d1d5db; font-size: 12px; white-space: nowrap; }
+.data-table td { padding: 6px; border: 1px solid #e5e7eb; font-size: 13px; vertical-align: middle; }
+.data-table tr:nth-child(even) td { background: #f9fafb; }
+.shift-table th { font-size: 12px; padding: 6px 4px; }
+.shift-table td { font-size: 12px; padding: 4px 3px; text-align: center; }
+.shift-table .row-sat td { background: #eff6ff; }
+.shift-table .row-sun td { background: #fff1f2; }
+.shift-table .row-hol td { background: #fff7ed; }
+.shift-cell { cursor: pointer; }
+.shift-cell:hover { background: #e0f2fe !important; }
+.staff-badge { display: inline-block; background: #dbeafe; color: #1e40af;
+  padding: 2px 7px; border-radius: 10px; font-size: 11px; }
+.unassigned { color: #ef4444; font-size: 12px; font-weight: bold; }
+.na-cell { color: #d1d5db; font-size: 11px; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: white; border-radius: 10px; padding: 24px;
+  width: 90%; max-width: 520px; max-height: 85vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 16px; color: #1e40af; font-size: 16px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-head { text-align: center; font-size: 12px; padding: 4px; color: #555; font-weight: bold; }
+.cal-head.sun-h { color: #ef4444; }
+.cal-head.sat-h { color: #3b82f6; }
+.cal-day { text-align: center; padding: 8px 4px; border: 1px solid #e5e7eb;
+  border-radius: 4px; cursor: pointer; font-size: 13px; user-select: none; }
+.cal-day.empty { border: none; cursor: default; }
+.cal-day.wish { background: #fee2e2; border-color: #fca5a5; color: #991b1b; font-weight: bold; }
+.cal-day.nat-hol { background: #fff7ed; }
+.cal-day.is-sun { color: #ef4444; }
+.cal-day.is-sat { color: #3b82f6; }
+.cal-day:not(.empty):hover { background: #f0fdf4; }
+.cal-day.wish:hover { background: #fecaca; }
+.alert { padding: 10px 14px; border-radius: 5px; font-size: 13px; margin-bottom: 10px; }
+.alert-warn { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
+.alert-info { background: #e0f2fe; border: 1px solid #7dd3fc; color: #0c4a6e; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 10px; }
+.stat-card { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px; }
+.stat-name { font-weight: bold; color: #0369a1; font-size: 13px; margin-bottom: 6px; }
+.stat-row { display: flex; justify-content: space-between; font-size: 12px; color: #555; padding: 2px 0; }
+.hol-tag { background: #fff7ed; border: 1px solid #fdba74; border-radius: 4px;
+  padding: 3px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+.hol-tag button { background: none; border: none; color: #ef4444; cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 0 1px; }
+.edit-staff-btn { display: block; width: 100%; text-align: left; padding: 7px 10px;
+  margin-bottom: 4px; border: 1px solid #e5e7eb; border-radius: 5px;
+  background: white; cursor: pointer; font-size: 13px; }
+.edit-staff-btn:hover { background: #f0f9ff; }
+.edit-staff-btn.selected { background: #dbeafe; border-color: #93c5fd; font-weight: bold; }
+.edit-staff-btn.incapable { color: #9ca3af; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>シフト作成アプリ</h1>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('settings')">設定</button>
+  <button class="tab-btn" onclick="switchTab('staff')">スタッフ管理</button>
+  <button class="tab-btn" onclick="switchTab('shifts')">シフト表</button>
+  <button class="tab-btn" onclick="switchTab('export')">集計・出力</button>
+</div>
+
+<!-- ========== 設定ページ ========== -->
+<div class="page active" id="page-settings">
+  <div class="card">
+    <div class="card-title">基本設定</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>年</label>
+        <input type="number" id="setting-year" min="2024" max="2030" style="width:90px">
+      </div>
+      <div class="form-group">
+        <label>月</label>
+        <select id="setting-month" style="width:80px"></select>
+      </div>
+      <div class="form-group">
+        <label>勤務後の休み日数</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" id="setting-rest" min="0" max="7" style="width:65px">
+          <span style="font-size:12px;color:#777">日（0=制限なし）</span>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="applySettings()">設定を適用</button>
+    </div>
+    <div class="alert alert-info">
+      勤務後の休み日数: 例）「2」に設定すると、勤務した日の翌日・翌々日は別のシフトに入れません。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">祝日設定（選択月）</div>
+    <p style="font-size:13px;color:#555;margin-bottom:10px">国民の祝日は自動設定されています。職場独自の休業日を追加できます。</p>
+    <div style="font-weight:bold;font-size:13px;color:#444;margin-bottom:6px">国民の祝日（自動）</div>
+    <div id="national-holiday-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+    <div style="font-weight:bold;font-size:13px;color:#444;margin-bottom:6px">カスタム祝日の追加</div>
+    <div class="form-row">
+      <input type="text" id="custom-hol-date" placeholder="YYYY-MM-DD" style="width:140px">
+      <input type="text" id="custom-hol-name" placeholder="名称（例: 創立記念日）" style="width:180px">
+      <button class="btn btn-primary btn-sm" onclick="addCustomHoliday()">追加</button>
+    </div>
+    <div id="custom-holiday-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+</div>
+
+<!-- ========== スタッフ管理ページ ========== -->
+<div class="page" id="page-staff">
+  <div class="card">
+    <div class="card-title">スタッフ追加</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>氏名</label>
+        <input type="text" id="new-staff-name" placeholder="例: 田中 太郎" style="width:200px"
+          onkeydown="if(event.key==='Enter')addStaff()">
+      </div>
+      <button class="btn btn-green" onclick="addStaff()">+ 追加</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">スタッフ一覧</div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="staff-table">
+        <thead>
+          <tr>
+            <th style="min-width:120px">氏名</th>
+            <th>早番<br><small>（平日）</small></th>
+            <th>当直<br><small>（平日）</small></th>
+            <th>日勤<br><small>（土日祝）</small></th>
+            <th>昼待機<br><small>（土日祝）</small></th>
+            <th>夜待機<br><small>（土日祝）</small></th>
+            <th style="min-width:70px">希望休</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="staff-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:#777">
+      登録スタッフ数: <span id="staff-count">0</span>名
+    </div>
+  </div>
+</div>
+
+<!-- ========== シフト表ページ ========== -->
+<div class="page" id="page-shifts">
+  <div class="card">
+    <div class="form-row" style="justify-content:space-between;align-items:center;margin-bottom:0">
+      <span id="shift-month-title" style="font-size:16px;font-weight:bold;color:#1e40af"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-green" onclick="autoSchedule()">自動シフト生成</button>
+        <button class="btn btn-gray btn-sm" onclick="clearShifts()">クリア</button>
+      </div>
+    </div>
+  </div>
+  <div id="schedule-warnings"></div>
+  <div class="card" style="overflow-x:auto;padding:12px">
+    <table class="data-table shift-table" id="shift-table">
+      <thead>
+        <tr>
+          <th style="min-width:50px">日付</th>
+          <th style="min-width:28px">曜</th>
+          <th style="min-width:50px">区分</th>
+          <th style="min-width:85px">早番<br><small>（平日）</small></th>
+          <th style="min-width:85px">当直<br><small>（平日）</small></th>
+          <th style="min-width:85px">日勤<br><small>（土日祝）</small></th>
+          <th style="min-width:85px">昼待機<br><small>（土日祝）</small></th>
+          <th style="min-width:85px">夜待機<br><small>（土日祝）</small></th>
+        </tr>
+      </thead>
+      <tbody id="shift-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== 集計・出力ページ ========== -->
+<div class="page" id="page-export">
+  <div class="card">
+    <div class="card-title">シフト出力</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="exportCSV()">CSV ダウンロード</button>
+      <button class="btn btn-primary" onclick="exportExcel()">Excel ダウンロード</button>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:#777">
+      ※ Excelダウンロードはインターネット接続が必要です（SheetJSライブラリ使用）
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">勤務回数集計（<span id="export-month-title"></span>）</div>
+    <div id="stats-container"></div>
+  </div>
+</div>
+
+<!-- ========== 希望休モーダル ========== -->
+<div class="modal-bg" id="holiday-modal">
+  <div class="modal">
+    <h3 id="holiday-modal-title">希望休入力</h3>
+    <p style="font-size:12px;color:#666;margin-bottom:12px">
+      日付をクリックして希望休を設定します（赤色=希望休）。
+    </p>
+    <div class="cal-grid" id="holiday-cal"></div>
+    <div style="margin-top:16px;text-align:right">
+      <button class="btn btn-primary btn-sm" onclick="closeHolidayModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== シフト編集モーダル ========== -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal">
+    <h3 id="edit-modal-title">シフト編集</h3>
+    <div id="edit-modal-body"></div>
+    <div style="margin-top:12px;text-align:right">
+      <button class="btn btn-gray btn-sm" onclick="closeEditModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== 国民の祝日データ =====================
+const NATIONAL_HOLIDAYS = {
+  '2024-01-01':'元日','2024-01-08':'成人の日',
+  '2024-02-11':'建国記念の日','2024-02-12':'振替休日','2024-02-23':'天皇誕生日',
+  '2024-03-20':'春分の日','2024-04-29':'昭和の日',
+  '2024-05-03':'憲法記念日','2024-05-04':'みどりの日','2024-05-05':'こどもの日','2024-05-06':'振替休日',
+  '2024-07-15':'海の日','2024-08-11':'山の日','2024-08-12':'振替休日',
+  '2024-09-16':'敬老の日','2024-09-22':'秋分の日','2024-09-23':'振替休日',
+  '2024-10-14':'スポーツの日','2024-11-03':'文化の日','2024-11-04':'振替休日',
+  '2024-11-23':'勤労感謝の日',
+  '2025-01-01':'元日','2025-01-13':'成人の日',
+  '2025-02-11':'建国記念の日','2025-02-23':'天皇誕生日','2025-02-24':'振替休日',
+  '2025-03-20':'春分の日','2025-04-29':'昭和の日',
+  '2025-05-03':'憲法記念日','2025-05-04':'みどりの日','2025-05-05':'こどもの日','2025-05-06':'振替休日',
+  '2025-07-21':'海の日','2025-08-11':'山の日',
+  '2025-09-15':'敬老の日','2025-09-23':'秋分の日',
+  '2025-10-13':'スポーツの日','2025-11-03':'文化の日','2025-11-23':'勤労感謝の日','2025-11-24':'振替休日',
+  '2026-01-01':'元日','2026-01-12':'成人の日',
+  '2026-02-11':'建国記念の日','2026-02-23':'天皇誕生日',
+  '2026-03-20':'春分の日','2026-04-29':'昭和の日',
+  '2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日','2026-05-06':'振替休日',
+  '2026-07-20':'海の日','2026-08-11':'山の日',
+  '2026-09-21':'敬老の日','2026-09-23':'秋分の日',
+  '2026-10-12':'スポーツの日','2026-11-03':'文化の日','2026-11-23':'勤労感謝の日',
+  '2027-01-01':'元日','2027-01-11':'成人の日',
+  '2027-02-11':'建国記念の日','2027-02-23':'天皇誕生日',
+  '2027-03-21':'春分の日','2027-04-29':'昭和の日',
+  '2027-05-03':'憲法記念日','2027-05-04':'みどりの日','2027-05-05':'こどもの日',
+  '2027-07-19':'海の日','2027-08-11':'山の日',
+  '2027-09-20':'敬老の日','2027-09-23':'秋分の日',
+  '2027-10-11':'スポーツの日','2027-11-03':'文化の日','2027-11-23':'勤労感謝の日'
+};
+
+// ===================== 状態 =====================
+let appData = {
+  settings: {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    minRestDays: 1,
+    customHolidays: {}
+  },
+  staff: [],
+  shifts: {}
+};
+
+// ===================== ストレージ =====================
+function saveData() {
+  try { localStorage.setItem('shiftApp_v1', JSON.stringify(appData)); } catch(e) {}
+}
+function loadData() {
+  try {
+    const s = localStorage.getItem('shiftApp_v1');
+    if (s) {
+      const d = JSON.parse(s);
+      // マージ（新フィールドのデフォルト保護）
+      if (!d.settings.customHolidays) d.settings.customHolidays = {};
+      appData = d;
+    }
+  } catch(e) {}
+}
+
+// ===================== ユーティリティ =====================
+function padZ(n) { return String(n).padStart(2, '0'); }
+function fmtDate(y, m, d) { return `${y}-${padZ(m)}-${padZ(d)}`; }
+function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+function getDow(dateStr) { return new Date(dateStr + 'T00:00:00').getDay(); }
+function getDowStr(dateStr) { return ['日','月','火','水','木','金','土'][getDow(dateStr)]; }
+function isNatHol(dateStr) { return !!NATIONAL_HOLIDAYS[dateStr]; }
+function isCustHol(dateStr) { return !!(appData.settings.customHolidays || {})[dateStr]; }
+function isHoliday(dateStr) { return isNatHol(dateStr) || isCustHol(dateStr); }
+function isSpecialDay(dateStr) { const d = getDow(dateStr); return d===0 || d===6 || isHoliday(dateStr); }
+function genId() { return '_' + Math.random().toString(36).substr(2,9); }
+function getStaff(id) { return appData.staff.find(s => s.id === id); }
+function staffName(id) { const s = getStaff(id); return s ? s.name : '(削除済)'; }
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const SHIFT_TYPES = ['hayaban','tochoku','nichkin','hirumachi','yorumachi'];
+const SHIFT_CAN = {
+  hayaban:'canHayaban', tochoku:'canTochoku',
+  nichkin:'canNichkin', hirumachi:'canHirumachi', yorumachi:'canYorumachi'
+};
+const SHIFT_LABEL = {
+  hayaban:'早番', tochoku:'当直', nichkin:'日勤', hirumachi:'昼待機', yorumachi:'夜待機'
+};
+
+// ===================== 初期化 =====================
+window.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  const sel = document.getElementById('setting-month');
+  for (let i = 1; i <= 12; i++) {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = `${i}月`;
+    sel.appendChild(opt);
+  }
+  renderSettings();
+  renderStaffTable();
+  renderShiftTable();
+  renderExport();
+});
+
+// ===================== タブ切替 =====================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'shifts') renderShiftTable();
+  if (tab === 'export') renderExport();
+}
+
+// ===================== 設定 =====================
+function renderSettings() {
+  document.getElementById('setting-year').value = appData.settings.year;
+  document.getElementById('setting-month').value = appData.settings.month;
+  document.getElementById('setting-rest').value = appData.settings.minRestDays;
+  renderHolidayLists();
+}
+
+function applySettings() {
+  const y = parseInt(document.getElementById('setting-year').value);
+  const m = parseInt(document.getElementById('setting-month').value);
+  const r = parseInt(document.getElementById('setting-rest').value);
+  if (!y || !m || isNaN(r) || r < 0) { alert('入力値を確認してください'); return; }
+  appData.settings.year = y;
+  appData.settings.month = m;
+  appData.settings.minRestDays = r;
+  saveData();
+  renderHolidayLists();
+  renderShiftTable();
+  renderExport();
+  alert(`${y}年${m}月、勤務後の休み${r}日で設定しました`);
+}
+
+function renderHolidayLists() {
+  const { year, month } = appData.settings;
+  const days = daysInMonth(year, month);
+
+  // 国民の祝日
+  let natHtml = '';
+  for (let d = 1; d <= days; d++) {
+    const ds = fmtDate(year, month, d);
+    if (NATIONAL_HOLIDAYS[ds]) {
+      natHtml += `<span class="hol-tag">${month}/${d} ${NATIONAL_HOLIDAYS[ds]}</span>`;
+    }
+  }
+  document.getElementById('national-holiday-list').innerHTML =
+    natHtml || '<span style="font-size:13px;color:#999">この月の祝日はありません</span>';
+
+  // カスタム祝日
+  const customs = appData.settings.customHolidays || {};
+  const ym = `${year}-${padZ(month)}`;
+  let cHtml = '';
+  for (const [ds, name] of Object.entries(customs)) {
+    if (ds.startsWith(ym)) {
+      cHtml += `<span class="hol-tag">${ds.slice(5)} ${esc(name)}
+        <button onclick="removeCustomHoliday('${ds}')" title="削除">x</button></span>`;
+    }
+  }
+  document.getElementById('custom-holiday-list').innerHTML = cHtml;
+}
+
+function addCustomHoliday() {
+  const ds = document.getElementById('custom-hol-date').value.trim();
+  const nm = document.getElementById('custom-hol-name').value.trim() || '休日';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) {
+    alert('日付形式が不正です。YYYY-MM-DD 形式で入力してください。\n例: 2026-05-01'); return;
+  }
+  if (!appData.settings.customHolidays) appData.settings.customHolidays = {};
+  appData.settings.customHolidays[ds] = nm;
+  document.getElementById('custom-hol-date').value = '';
+  document.getElementById('custom-hol-name').value = '';
+  saveData();
+  renderHolidayLists();
+}
+
+function removeCustomHoliday(ds) {
+  delete appData.settings.customHolidays[ds];
+  saveData();
+  renderHolidayLists();
+}
+
+// ===================== スタッフ管理 =====================
+function renderStaffTable() {
+  const { year, month } = appData.settings;
+  const ym = `${year}-${padZ(month)}`;
+  const tbody = document.getElementById('staff-tbody');
+
+  tbody.innerHTML = appData.staff.map(s => {
+    const wishDays = (s.holidays || []).filter(d => d.startsWith(ym));
+    const wishLabel = wishDays.length > 0 ? `${wishDays.length}日設定` : '未設定';
+    const wishCls = wishDays.length > 0 ? 'btn-orange' : 'btn-gray';
+    return `<tr>
+      <td>
+        <input type="text" value="${esc(s.name)}"
+          onchange="updateStaff('${s.id}','name',this.value)"
+          style="width:130px;border:1px solid #d1d5db;border-radius:3px;padding:3px 6px;font-size:13px">
+      </td>
+      <td><label style="cursor:pointer"><input type="checkbox" ${s.canHayaban?'checked':''}
+        onchange="updateStaff('${s.id}','canHayaban',this.checked)"> 可</label></td>
+      <td><label style="cursor:pointer"><input type="checkbox" ${s.canTochoku?'checked':''}
+        onchange="updateStaff('${s.id}','canTochoku',this.checked)"> 可</label></td>
+      <td><label style="cursor:pointer"><input type="checkbox" ${s.canNichkin?'checked':''}
+        onchange="updateStaff('${s.id}','canNichkin',this.checked)"> 可</label></td>
+      <td><label style="cursor:pointer"><input type="checkbox" ${s.canHirumachi?'checked':''}
+        onchange="updateStaff('${s.id}','canHirumachi',this.checked)"> 可</label></td>
+      <td><label style="cursor:pointer"><input type="checkbox" ${s.canYorumachi?'checked':''}
+        onchange="updateStaff('${s.id}','canYorumachi',this.checked)"> 可</label></td>
+      <td>
+        <button class="btn ${wishCls} btn-xs" onclick="openHolidayModal('${s.id}')">${wishLabel}</button>
+      </td>
+      <td>
+        <button class="btn btn-red btn-xs" onclick="deleteStaff('${s.id}')">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('staff-count').textContent = appData.staff.length;
+}
+
+function addStaff() {
+  const el = document.getElementById('new-staff-name');
+  const name = el.value.trim();
+  if (!name) { alert('氏名を入力してください'); el.focus(); return; }
+  appData.staff.push({
+    id: genId(), name,
+    canHayaban: true, canTochoku: true,
+    canNichkin: true, canHirumachi: true, canYorumachi: true,
+    holidays: []
+  });
+  el.value = '';
+  saveData();
+  renderStaffTable();
+  el.focus();
+}
+
+function deleteStaff(id) {
+  const s = getStaff(id);
+  if (!s || !confirm(`「${s.name}」を削除しますか？\nシフト表の割り当ても解除されます。`)) return;
+  appData.staff = appData.staff.filter(x => x.id !== id);
+  for (const ds of Object.keys(appData.shifts)) {
+    for (const type of SHIFT_TYPES) {
+      if (appData.shifts[ds][type] === id) appData.shifts[ds][type] = null;
+    }
+  }
+  saveData();
+  renderStaffTable();
+}
+
+function updateStaff(id, field, value) {
+  const s = getStaff(id);
+  if (s) { s[field] = value; saveData(); }
+}
+
+// ===================== 希望休モーダル =====================
+let holidayStaffId = null;
+
+function openHolidayModal(staffId) {
+  holidayStaffId = staffId;
+  const s = getStaff(staffId);
+  if (!s) return;
+  document.getElementById('holiday-modal-title').textContent = `希望休入力 — ${s.name}`;
+  renderHolidayCal();
+  document.getElementById('holiday-modal').classList.add('open');
+}
+
+function closeHolidayModal() {
+  document.getElementById('holiday-modal').classList.remove('open');
+  holidayStaffId = null;
+  renderStaffTable();
+}
+
+function renderHolidayCal() {
+  const { year, month } = appData.settings;
+  const s = getStaff(holidayStaffId);
+  if (!s) return;
+  const days = daysInMonth(year, month);
+  const firstDow = new Date(year, month - 1, 1).getDay();
+
+  let html = '';
+  ['日','月','火','水','木','金','土'].forEach((h, i) => {
+    const cls = i===0 ? 'cal-head sun-h' : (i===6 ? 'cal-head sat-h' : 'cal-head');
+    html += `<div class="${cls}">${h}</div>`;
+  });
+  for (let i = 0; i < firstDow; i++) html += `<div class="cal-day empty"></div>`;
+
+  const wishes = s.holidays || [];
+  for (let d = 1; d <= days; d++) {
+    const ds = fmtDate(year, month, d);
+    const dow = getDow(ds);
+    const isWish = wishes.includes(ds);
+    const isNH = isNatHol(ds);
+    const isCH = isCustHol(ds);
+    const holName = isNH ? NATIONAL_HOLIDAYS[ds] : ((isCH && (appData.settings.customHolidays||{})[ds]) || '');
+    let cls = 'cal-day';
+    if (dow === 0) cls += ' is-sun';
+    else if (dow === 6) cls += ' is-sat';
+    if (isNH || isCH) cls += ' nat-hol';
+    if (isWish) cls += ' wish';
+    html += `<div class="${cls}" title="${esc(holName)}" onclick="toggleWish('${ds}')">${d}</div>`;
+  }
+  document.getElementById('holiday-cal').innerHTML = html;
+}
+
+function toggleWish(ds) {
+  const s = getStaff(holidayStaffId);
+  if (!s) return;
+  if (!s.holidays) s.holidays = [];
+  const idx = s.holidays.indexOf(ds);
+  if (idx >= 0) s.holidays.splice(idx, 1);
+  else s.holidays.push(ds);
+  saveData();
+  renderHolidayCal();
+}
+
+document.getElementById('holiday-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeHolidayModal();
+});
+
+// ===================== 自動シフト生成 =====================
+function autoSchedule() {
+  if (appData.staff.length === 0) { alert('スタッフを登録してください'); return; }
+  if (!confirm('自動シフト生成を実行します。\n既存のシフトはクリアされます。よろしいですか？')) return;
+
+  const { year, month, minRestDays } = appData.settings;
+  const days = daysInMonth(year, month);
+  const newShifts = {};
+  const warnings = [];
+
+  // 各スタッフのシフト種別カウント
+  const counts = {};
+  appData.staff.forEach(s => {
+    counts[s.id] = { hayaban:0, tochoku:0, nichkin:0, hirumachi:0, yorumachi:0, total:0 };
+  });
+
+  // 最後に勤務した日（初期値は超マイナス）
+  const lastWorked = {};
+  appData.staff.forEach(s => { lastWorked[s.id] = -999; });
+
+  for (let day = 1; day <= days; day++) {
+    const ds = fmtDate(year, month, day);
+    const special = isSpecialDay(ds);
+    newShifts[ds] = { hayaban:null, tochoku:null, nichkin:null, hirumachi:null, yorumachi:null };
+
+    const usedToday = new Set();
+    const targets = special
+      ? ['nichkin','hirumachi','yorumachi']
+      : ['hayaban','tochoku'];
+
+    for (const type of targets) {
+      const chosen = pickStaff(type, day, ds, counts, lastWorked, minRestDays, usedToday);
+      newShifts[ds][type] = chosen;
+      if (chosen) {
+        usedToday.add(chosen);
+        counts[chosen][type]++;
+        counts[chosen].total++;
+        lastWorked[chosen] = day;
+      } else {
+        warnings.push(`${month}/${day}（${getDowStr(ds)}）の${SHIFT_LABEL[type]}`);
+      }
+    }
+  }
+
+  appData.shifts = newShifts;
+  saveData();
+  switchTab('shifts');
+  renderShiftTable(warnings);
+}
+
+function pickStaff(type, day, ds, counts, lastWorked, minRestDays, usedToday) {
+  const canKey = SHIFT_CAN[type];
+  const eligible = appData.staff.filter(s => {
+    if (!s[canKey]) return false;
+    if ((s.holidays || []).includes(ds)) return false;
+    if (usedToday.has(s.id)) return false;
+    if (minRestDays > 0 && day - lastWorked[s.id] <= minRestDays) return false;
+    return true;
+  });
+  if (eligible.length === 0) return null;
+  // 同じ種別のカウントが少ない順、同率なら総勤務数が少ない順
+  eligible.sort((a, b) => {
+    const d1 = counts[a.id][type] - counts[b.id][type];
+    if (d1 !== 0) return d1;
+    return counts[a.id].total - counts[b.id].total;
+  });
+  return eligible[0].id;
+}
+
+function clearShifts() {
+  if (!confirm('シフト表をクリアしますか？')) return;
+  appData.shifts = {};
+  saveData();
+  renderShiftTable();
+}
+
+// ===================== シフト表描画 =====================
+function renderShiftTable(warnings = []) {
+  const { year, month } = appData.settings;
+  const days = daysInMonth(year, month);
+
+  document.getElementById('shift-month-title').textContent = `${year}年${month}月 シフト表`;
+
+  // 警告表示
+  const warnEl = document.getElementById('schedule-warnings');
+  if (warnings.length > 0) {
+    const list = warnings.map(w => `<li>${w}</li>`).join('');
+    warnEl.innerHTML = `<div class="alert alert-warn">
+      割り当て不足が ${warnings.length} 件あります。手動で編集してください。<br>
+      <ul style="margin-top:6px;padding-left:18px">${list}</ul>
+    </div>`;
+  } else {
+    warnEl.innerHTML = '';
+  }
+
+  const tbody = document.getElementById('shift-tbody');
+  let html = '';
+
+  for (let d = 1; d <= days; d++) {
+    const ds = fmtDate(year, month, d);
+    const dow = getDow(ds);
+    const dowStr = getDowStr(ds);
+    const special = isSpecialDay(ds);
+    const holName = NATIONAL_HOLIDAYS[ds] || ((appData.settings.customHolidays||{})[ds]) || '';
+
+    let rowClass = '';
+    if (dow === 0) rowClass = 'row-sun';
+    else if (holName) rowClass = 'row-hol';
+    else if (dow === 6) rowClass = 'row-sat';
+
+    const typeBadge = special
+      ? `<span style="color:#7c3aed;font-size:11px">土日祝</span>`
+      : `<span style="color:#6b7280;font-size:11px">平日</span>`;
+
+    const sh = appData.shifts[ds] || {};
+
+    html += `<tr class="${rowClass}">
+      <td style="white-space:nowrap">${month}/${d}</td>
+      <td style="color:${dow===0?'#ef4444':(dow===6?'#3b82f6':'#333')}">${dowStr}</td>
+      <td>${typeBadge}</td>`;
+
+    for (const type of ['hayaban','tochoku']) {
+      if (!special) {
+        html += shiftCell(ds, type, sh[type]);
+      } else {
+        html += `<td class="na-cell">—</td>`;
+      }
+    }
+    for (const type of ['nichkin','hirumachi','yorumachi']) {
+      if (special) {
+        html += shiftCell(ds, type, sh[type]);
+      } else {
+        html += `<td class="na-cell">—</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+
+  tbody.innerHTML = html;
+}
+
+function shiftCell(ds, type, staffId) {
+  const inner = staffId
+    ? `<span class="staff-badge">${esc(staffName(staffId))}</span>`
+    : `<span class="unassigned">未</span>`;
+  return `<td class="shift-cell" onclick="openEditModal('${ds}','${type}')"
+    title="クリックして編集">${inner}</td>`;
+}
+
+// ===================== シフト編集モーダル =====================
+let editState = {};
+
+function openEditModal(ds, type) {
+  editState = { ds, type };
+  const parts = ds.split('-');
+  const m = parseInt(parts[1]), d = parseInt(parts[2]);
+  const dowStr = getDowStr(ds);
+  document.getElementById('edit-modal-title').textContent =
+    `${m}/${d}（${dowStr}） ${SHIFT_LABEL[type]} を編集`;
+
+  const canKey = SHIFT_CAN[type];
+  const currentId = (appData.shifts[ds] || {})[type];
+
+  let html = `<button class="edit-staff-btn ${!currentId?'selected':''}"
+    onclick="assignShift(null)">[ 未割当（空欄）]</button>`;
+
+  appData.staff.forEach(s => {
+    const capable = s[canKey];
+    const sel = s.id === currentId;
+    let cls = 'edit-staff-btn';
+    if (sel) cls += ' selected';
+    if (!capable) cls += ' incapable';
+    const note = sel ? ' ✓ 現在' : (!capable ? ' （担当外）' : '');
+    html += `<button class="${cls}" onclick="assignShift('${s.id}')">
+      ${esc(s.name)}${note}</button>`;
+  });
+
+  document.getElementById('edit-modal-body').innerHTML = html;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function assignShift(staffId) {
+  const { ds, type } = editState;
+  if (!appData.shifts[ds]) {
+    appData.shifts[ds] = { hayaban:null, tochoku:null, nichkin:null, hirumachi:null, yorumachi:null };
+  }
+  appData.shifts[ds][type] = staffId || null;
+  saveData();
+  closeEditModal();
+  renderShiftTable();
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+document.getElementById('edit-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeEditModal();
+});
+
+// ===================== 集計・出力 =====================
+function renderExport() {
+  const { year, month } = appData.settings;
+  const days = daysInMonth(year, month);
+  document.getElementById('export-month-title').textContent = `${year}年${month}月`;
+
+  const counts = {};
+  appData.staff.forEach(s => {
+    counts[s.id] = { hayaban:0, tochoku:0, nichkin:0, hirumachi:0, yorumachi:0, total:0 };
+  });
+
+  for (let d = 1; d <= days; d++) {
+    const ds = fmtDate(year, month, d);
+    const sh = appData.shifts[ds] || {};
+    for (const type of SHIFT_TYPES) {
+      if (sh[type] && counts[sh[type]]) {
+        counts[sh[type]][type]++;
+        counts[sh[type]].total++;
+      }
+    }
+  }
+
+  const el = document.getElementById('stats-container');
+  if (appData.staff.length === 0) {
+    el.innerHTML = '<div style="color:#999;font-size:13px">スタッフが登録されていません</div>';
+    return;
+  }
+
+  let html = '<div class="stats-grid">';
+  appData.staff.forEach(s => {
+    const c = counts[s.id];
+    html += `<div class="stat-card">
+      <div class="stat-name">${esc(s.name)}</div>
+      <div class="stat-row"><span>早番</span><span>${c.hayaban}回</span></div>
+      <div class="stat-row"><span>当直</span><span>${c.tochoku}回</span></div>
+      <div class="stat-row"><span>日勤（土日祝）</span><span>${c.nichkin}回</span></div>
+      <div class="stat-row"><span>昼待機（土日祝）</span><span>${c.hirumachi}回</span></div>
+      <div class="stat-row"><span>夜待機（土日祝）</span><span>${c.yorumachi}回</span></div>
+      <div class="stat-row" style="font-weight:bold;border-top:1px solid #bae6fd;
+        margin-top:4px;padding-top:4px;color:#0369a1">
+        <span>合計</span><span>${c.total}回</span></div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function buildShiftRows() {
+  const { year, month } = appData.settings;
+  const days = daysInMonth(year, month);
+  const rows = [['日付','曜日','区分','早番','当直','日勤（土日祝）','昼待機（土日祝）','夜待機（土日祝）']];
+
+  for (let d = 1; d <= days; d++) {
+    const ds = fmtDate(year, month, d);
+    const dowStr = getDowStr(ds);
+    const special = isSpecialDay(ds);
+    const typeStr = special ? '土日祝' : '平日';
+    const sh = appData.shifts[ds] || {};
+    rows.push([
+      `${month}/${d}`, dowStr, typeStr,
+      !special ? (sh.hayaban ? staffName(sh.hayaban) : '未割当') : '',
+      !special ? (sh.tochoku ? staffName(sh.tochoku) : '未割当') : '',
+      special  ? (sh.nichkin   ? staffName(sh.nichkin)   : '未割当') : '',
+      special  ? (sh.hirumachi ? staffName(sh.hirumachi) : '未割当') : '',
+      special  ? (sh.yorumachi ? staffName(sh.yorumachi) : '未割当') : ''
+    ]);
+  }
+
+  // 集計行
+  const { year: y, month: mo } = appData.settings;
+  const cnt = {};
+  appData.staff.forEach(s => {
+    cnt[s.id] = { hayaban:0, tochoku:0, nichkin:0, hirumachi:0, yorumachi:0, total:0 };
+  });
+  for (let d = 1; d <= days; d++) {
+    const ds = fmtDate(year, month, d);
+    const sh = appData.shifts[ds] || {};
+    for (const type of SHIFT_TYPES) {
+      if (sh[type] && cnt[sh[type]]) { cnt[sh[type]][type]++; cnt[sh[type]].total++; }
+    }
+  }
+  rows.push([]);
+  rows.push(['【勤務回数集計】','','','早番','当直','日勤','昼待機','夜待機']);
+  appData.staff.forEach(s => {
+    const c = cnt[s.id];
+    rows.push([s.name,'','',c.hayaban,c.tochoku,c.nichkin,c.hirumachi,c.yorumachi]);
+  });
+
+  return rows;
+}
+
+function exportCSV() {
+  const rows = buildShiftRows();
+  const bom = '﻿';
+  const csv = rows.map(r =>
+    r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')
+  ).join('\r\n');
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const { year, month } = appData.settings;
+  a.href = url;
+  a.download = `shift_${year}_${padZ(month)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('ExcelエクスポートにはSheetJSライブラリが必要です（インターネット接続が必要）。\nCSVでの出力をお試しください。');
+    return;
+  }
+  const rows = buildShiftRows();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:8},{wch:5},{wch:6},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14}
+  ];
+  const wb = XLSX.utils.book_new();
+  const { year, month } = appData.settings;
+  XLSX.utils.book_append_sheet(wb, ws, `${year}年${month}月`);
+  XLSX.writeFile(wb, `shift_${year}_${padZ(month)}.xlsx`);
+}
+</script>
+</body>
+</html>
