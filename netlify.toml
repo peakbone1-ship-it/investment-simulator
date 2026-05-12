@@ -1,6 +1,12 @@
 [build]
   publish = "."
 
+# ルート(/)にアクセスしたら投資信託シミュレーターを表示
+[[redirects]]
+  from = "/"
+  to = "/investment-simulator.html"
+  status = 200
+
 [[headers]]
   for = "/*.html"
   [headers.values]

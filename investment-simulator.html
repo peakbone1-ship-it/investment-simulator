@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投資信託シミュレーター</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Hiragino Sans','Yu Gothic',sans-serif;background:linear-gradient(135deg,#0d1117 0%,#161b22 50%,#0d1117 100%);min-height:100vh;color:#e0e0e0}
+.container{max-width:1440px;margin:0 auto;padding:20px}
+header{text-align:center;padding:28px 0 20px}
+header h1{font-size:1.9rem;color:#58a6ff;text-shadow:0 0 20px rgba(88,166,255,0.3);margin-bottom:6px}
+header p{color:#8b949e;font-size:0.88rem}
+.layout{display:grid;grid-template-columns:380px 1fr;gap:18px;align-items:start}
+.panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:22px}
+.panel h2{font-size:0.95rem;color:#58a6ff;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid rgba(88,166,255,0.2)}
+.section-sep{border:none;border-top:1px solid rgba(255,255,255,0.08);margin:18px 0}
+.section-label{font-size:0.78rem;font-weight:700;color:#8957e5;letter-spacing:.05em;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.form-group{margin-bottom:14px}
+label{display:block;font-size:0.8rem;color:#8b949e;margin-bottom:5px;font-weight:500}
+select,input[type=number]{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 12px;color:#e0e0e0;font-size:0.88rem;transition:border-color .2s}
+select:focus,input:focus{outline:none;border-color:#58a6ff}
+select option{background:#161b22}
+.tabs{display:flex;gap:3px;background:rgba(255,255,255,0.04);border-radius:8px;padding:3px;margin-bottom:14px}
+.tab{flex:1;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:0.82rem;transition:all .2s;background:transparent;color:#8b949e}
+.tab.active{background:#58a6ff;color:#0d1117;font-weight:700}
+.hint{font-size:0.71rem;color:#6e7681;margin-top:3px;line-height:1.5}
+.toggle-row{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(137,87,229,0.08);border:1px solid rgba(137,87,229,0.25);border-radius:8px;margin-bottom:14px;user-select:none}
+.toggle-row input[type=checkbox]{width:16px;height:16px;accent-color:#8957e5;cursor:pointer;flex-shrink:0}
+.toggle-row span{font-size:0.82rem;color:#c084fc;font-weight:600}
+.withdraw-box{background:rgba(137,87,229,0.06);border:1px solid rgba(137,87,229,0.2);border-radius:10px;padding:14px;display:none;flex-direction:column;gap:12px}
+.withdraw-box.open{display:flex}
+.withdraw-box .form-group{margin-bottom:0}
+.withdraw-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.withdraw-note{font-size:0.71rem;color:#8957e5;background:rgba(137,87,229,0.1);border-radius:6px;padding:7px 10px;line-height:1.6}
+.btn-calc{width:100%;padding:13px;background:linear-gradient(135deg,#238636,#2ea043);border:none;border-radius:10px;color:#fff;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:10px}
+.btn-calc:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(46,160,67,0.35)}
+.results{display:flex;flex-direction:column;gap:16px}
+.placeholder{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:60px 20px;text-align:center;color:#3d444d}
+.placeholder .ico{font-size:2.5rem;margin-bottom:10px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.cards.wide{grid-template-columns:repeat(3,1fr)}
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;text-align:center}
+.card.highlight-w{border-color:rgba(137,87,229,0.35);background:rgba(137,87,229,0.06)}
+.card.highlight-d{border-color:rgba(248,81,73,0.35);background:rgba(248,81,73,0.06)}
+.card-lbl{font-size:0.71rem;color:#8b949e;margin-bottom:5px;line-height:1.4}
+.card-val{font-size:1.1rem;font-weight:700}
+.card-sub{font-size:0.68rem;color:#6e7681;margin-top:3px}
+.green{color:#3fb950}.red{color:#f85149}.blue{color:#58a6ff}.orange{color:#f0883e}.purple{color:#bc8cff}.yellow{color:#e3b341}
+.cards-row{display:flex;flex-direction:column;gap:10px}
+.chart-wrap{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;position:relative;height:400px}
+.events-section{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px}
+.events-section h3{font-size:0.88rem;color:#58a6ff;margin-bottom:12px}
+.events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.ev-card{background:rgba(255,255,255,0.03);border-left:3px solid;border-radius:6px;padding:9px 11px}
+.ev-card h4{font-size:0.78rem;font-weight:600;margin-bottom:2px}
+.ev-card p{font-size:0.72rem;color:#8b949e;line-height:1.4}
+.all-events-section{margin-top:18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px}
+.all-events-section h3{font-size:0.9rem;color:#58a6ff;margin-bottom:14px}
+.returns-section{margin-top:18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px}
+.returns-section h3{font-size:0.9rem;color:#58a6ff;margin-bottom:4px}
+.returns-section .sub-note{font-size:0.72rem;color:#6e7681;margin-bottom:12px}
+.returns-legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:0.72rem;color:#8b949e;align-items:center}
+.leg-swatch{display:inline-block;width:28px;height:10px;border-radius:3px;vertical-align:middle;margin-right:3px}
+.returns-table-wrap{overflow-x:auto;border-radius:8px;border:1px solid rgba(255,255,255,0.07)}
+.returns-table{width:100%;border-collapse:collapse;min-width:600px}
+.returns-table thead th{padding:9px 14px;text-align:center;background:rgba(255,255,255,0.05);border-bottom:2px solid rgba(255,255,255,0.1);white-space:nowrap;position:sticky;top:0;z-index:1}
+.returns-table thead th.col-year{text-align:left;color:#6e7681;min-width:90px;font-size:0.78rem}
+.returns-table thead .fn{font-size:0.79rem;color:#e0e0e0;font-weight:700}
+.returns-table thead .ff{font-size:0.65rem;color:#6e7681;font-weight:400;display:block;margin-top:2px}
+.returns-table tbody td{padding:5px 14px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);font-weight:700;font-size:0.8rem}
+.returns-table tbody td.col-year{text-align:left;color:#8b949e;font-weight:500;font-size:0.78rem}
+.returns-table tbody tr:last-child td{border-bottom:none}
+.returns-table tbody tr:hover td{filter:brightness(1.2)}
+.ret-pos{color:#3fb950}.ret-neg{color:#f85149}.ret-na{color:#3d444d;font-weight:400}
+.notice{border-radius:8px;padding:10px 14px;font-size:0.78rem}
+.notice.loop{background:rgba(240,136,62,0.1);border:1px solid rgba(240,136,62,0.3);color:#f0883e}
+.notice.depletion{background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-weight:600}
+.disclaimer{text-align:center;font-size:0.7rem;color:#3d444d;margin-top:24px;padding-bottom:20px;line-height:1.9}
+.gmail-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:12px}
+.btn-gmail{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#fff;border:none;border-radius:8px;color:#444;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+.btn-gmail:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(0,0,0,0.4)}
+.btn-gmail svg{flex-shrink:0}
+.gmail-toast{display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#161b22;border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:14px 22px;font-size:0.85rem;color:#e0e0e0;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:420px;text-align:center;line-height:1.7}
+.gmail-toast.show{display:block;animation:fadeInUp .3s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.start-years-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.mt-change-box{background:rgba(88,166,255,0.06);border:1px solid rgba(88,166,255,0.2);border-radius:10px;padding:14px;display:none;flex-direction:column;gap:10px;margin-top:8px}
+.mt-change-box.open{display:flex}
+.mt-change-box .form-group{margin-bottom:0}
+.w-years-cmp{margin-top:6px;padding:6px 8px;background:rgba(137,87,229,0.08);border:1px solid rgba(137,87,229,0.2);border-radius:6px}
+.w-pat-sub-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.w-pat-sub-row input{font-size:.78rem;padding:5px 7px}
+.w-sub-lbl{font-size:.68rem;color:#8b949e;display:block;margin-bottom:3px}
+.mt-change-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;padding:8px;background:rgba(88,166,255,0.05);border:1px solid rgba(88,166,255,0.15);border-radius:8px;margin-bottom:6px}
+.mt-change-row .form-group{margin-bottom:0}
+.btn-add-mt{width:100%;padding:7px;background:rgba(88,166,255,0.12);border:1px dashed rgba(88,166,255,0.4);border-radius:7px;color:#58a6ff;font-size:0.82rem;cursor:pointer;transition:all .2s;margin-top:4px}
+.btn-add-mt:hover{background:rgba(88,166,255,0.2)}
+.btn-rm-mt{padding:6px 9px;background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.3);border-radius:6px;color:#f85149;font-size:0.85rem;cursor:pointer;line-height:1;align-self:end;margin-bottom:1px}
+.btn-rm-mt:hover{background:rgba(248,81,73,0.25)}
+.pat-label{font-size:0.75rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.pat-dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cmp-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08)}
+.cmp-table{width:100%;border-collapse:collapse;min-width:500px}
+.cmp-table th,.cmp-table td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.82rem}
+.cmp-table thead th{background:rgba(255,255,255,0.05);font-weight:700;text-align:center;white-space:nowrap}
+.cmp-table thead th.th-label{text-align:left;color:#6e7681;font-weight:500}
+.cmp-table thead .pat-name{font-size:0.85rem}
+.cmp-table thead .pat-range{font-size:0.68rem;color:#6e7681;font-weight:400;display:block;margin-top:2px}
+.cmp-table tbody td{text-align:center;font-weight:700}
+.cmp-table tbody td.td-label{text-align:left;color:#8b949e;font-weight:400;font-size:0.78rem}
+.cmp-table tbody tr:last-child td{border-bottom:none}
+.cmp-table tbody tr:hover td{background:rgba(255,255,255,0.03)}
+.cmp-table .sep-row td{background:rgba(137,87,229,0.07);color:#bc8cff;font-size:0.72rem;font-weight:600;padding:5px 14px}
+.events-3col{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.events-3col-item h4{font-size:0.78rem;font-weight:700;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.08)}
+@media(max-width:1080px){.layout{grid-template-columns:1fr}.cards{grid-template-columns:repeat(3,1fr)}.events-3col{grid-template-columns:1fr}}
+@media(max-width:640px){.cards{grid-template-columns:repeat(2,1fr)}.withdraw-row{grid-template-columns:1fr}.start-years-grid{grid-template-columns:1fr}header h1{font-size:1.3rem}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="gmail-bar">
+    <button class="btn-gmail" onclick="sendViaGmail()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M6 40h6V22.5L4 17v20c0 1.7 1.3 3 2 3z"/><path fill="#34A853" d="M36 40h6c.7 0 2-1.3 2-3V17l-8 5.5z"/><path fill="#FBBC05" d="M36 10l-12 8.5L12 10H6l18 13 18-13z"/><path fill="#4285F4" d="M6 17l8 5.5V10H6z"/><path fill="#C5221F" d="M42 10h-6v12.5L44 17v-4c0-1.7-1.3-3-2-3z"/></svg>
+      Gmailで送る
+    </button>
+  </div>
+
+  <header>
+    <h1>📈 投資信託シミュレーター</h1>
+    <p>過去の実績データをもとに投資・取り崩し結果をシミュレーション（手数料込み）</p>
+  </header>
+
+  <div class="layout">
+    <!-- ── 設定パネル ── -->
+    <div class="panel">
+      <h2>⚙️ シミュレーション設定</h2>
+
+      <div class="form-group">
+        <label>ファンド</label>
+        <select id="fundSelect" onchange="onFundChange()">
+          <option value="sp500">eMAXIS Slim 米国株式（S&P500）</option>
+          <option value="acwi">eMAXIS Slim 全世界株式（オール・カントリー）</option>
+          <option value="nasdaq100">ニッセイNASDAQ100インデックスファンド</option>
+          <option value="nifty50">楽天・インド株Nifty50インデックスファンド</option>
+        </select>
+        <div class="hint" id="feeHint"></div>
+        <div class="hint" id="dataHint"></div>
+      </div>
+
+      <div class="form-group">
+        <label>投資方法</label>
+        <div class="tabs">
+          <button class="tab active" onclick="setType('lumpsum',this)">一括投資</button>
+          <button class="tab" onclick="setType('monthly',this)">積立投資（毎月）</button>
+        </div>
+      </div>
+
+      <div class="form-group" id="lsGroup">
+        <label>投資金額（円）</label>
+        <input type="number" id="lsAmt" value="1000000" min="1" step="10000">
+      </div>
+      <div class="form-group" id="mtGroup" style="display:none">
+        <label>初期投資額（円）</label>
+        <input type="number" id="mtInitAmt" value="0" min="0" step="10000">
+        <div class="hint">0の場合は初期投資なし（積立のみ）</div>
+      </div>
+      <div class="form-group" id="mtGroup2" style="display:none">
+        <label>毎月の積立金額（円）</label>
+        <input type="number" id="mtAmt" value="30000" min="1" step="1000">
+      </div>
+      <div id="mtChangeGroup" style="display:none">
+        <label class="toggle-row" for="mtChangeToggle" style="background:rgba(88,166,255,0.08);border-color:rgba(88,166,255,0.25)">
+          <input type="checkbox" id="mtChangeToggle" onchange="toggleMtChange()">
+          <span style="color:#58a6ff">途中から積立金額を変更する</span>
+        </label>
+        <div class="mt-change-box" id="mtChangeBox">
+          <div id="mtChangeList"></div>
+          <button class="btn-add-mt" onclick="addMtChangeRow()">＋ 変更ポイントを追加</button>
+          <div class="hint" style="margin-top:6px">複数設定可。積立開始から指定年数経過後に金額が切り替わります（0円＝積立停止）。年数の昇順に適用されます。</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>シミュレーションモード</label>
+        <div class="tabs">
+          <button class="tab active" onclick="setSimMode('single',this)">単発</button>
+          <button class="tab" onclick="setSimMode('compare',this)">3パターン比較</button>
+        </div>
+      </div>
+
+      <div id="singleYearGroup" class="form-group">
+        <label>投資開始年</label>
+        <input type="number" id="startYear" value="2000" min="1900" max="2100">
+      </div>
+
+      <div id="compareYearGroup" class="form-group" style="display:none">
+        <label>投資開始年・年率（比較パターン）</label>
+        <div class="start-years-grid">
+          <div>
+            <div class="pat-label"><span class="pat-dot" style="background:#58a6ff"></span>パターン①</div>
+            <input type="number" id="startYear1" value="1990" min="1900" max="2100">
+            <div class="w-years-cmp" id="wYears1" style="display:none">
+              <div class="w-pat-sub-row">
+                <div><label class="w-sub-lbl">取崩開始年</label><input type="number" id="wStart1" value="2020" min="1900" max="2200"></div>
+                <div><label class="w-sub-lbl">取崩停止年</label><input type="number" id="wEnd1" placeholder="任意" min="1900" max="2200"></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="pat-label"><span class="pat-dot" style="background:#f0883e"></span>パターン②</div>
+            <input type="number" id="startYear2" value="2000" min="1900" max="2100">
+            <div class="w-years-cmp" id="wYears2" style="display:none">
+              <div class="w-pat-sub-row">
+                <div><label class="w-sub-lbl">取崩開始年</label><input type="number" id="wStart2" value="2020" min="1900" max="2200"></div>
+                <div><label class="w-sub-lbl">取崩停止年</label><input type="number" id="wEnd2" placeholder="任意" min="1900" max="2200"></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="pat-label"><span class="pat-dot" style="background:#3fb950"></span>パターン③</div>
+            <input type="number" id="startYear3" value="2010" min="1900" max="2100">
+            <div class="w-years-cmp" id="wYears3" style="display:none">
+              <div class="w-pat-sub-row">
+                <div><label class="w-sub-lbl">取崩開始年</label><input type="number" id="wStart3" value="2020" min="1900" max="2200"></div>
+                <div><label class="w-sub-lbl">取崩停止年</label><input type="number" id="wEnd3" placeholder="任意" min="1900" max="2200"></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="pat-label"><span class="pat-dot" style="background:#e3b341"></span>パターン④（固定年率・任意）</div>
+            <input type="number" id="customRate4" placeholder="年率 % (空欄＝非表示)" min="-50" max="100" step="0.1">
+            <div id="pat4RefYearRow" style="display:none;margin-top:5px">
+              <label class="w-sub-lbl">参照開始年（④の基準年）</label>
+              <input type="number" id="startYear4ref" value="2000" min="1900" max="2100">
+            </div>
+            <div class="w-years-cmp" id="wYears4" style="display:none">
+              <div class="w-pat-sub-row">
+                <div><label class="w-sub-lbl">取崩開始年</label><input type="number" id="wStart4" value="2020" min="1900" max="2200"></div>
+                <div><label class="w-sub-lbl">取崩停止年</label><input type="number" id="wEnd4" placeholder="任意" min="1900" max="2200"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hint">①②③は開始年を変えて比較 / ④は固定年率（空欄で除外）。④の参照開始年は取り崩し開始年の計算基準になります。取り崩し開始年は必ず参照開始年より後に設定してください。</div>
+      </div>
+      <div class="form-group">
+        <label>運用期間（年）</label>
+        <input type="number" id="duration" value="30" min="1" max="100">
+      </div>
+
+      <!-- ── 取り崩し設定 ── -->
+      <hr class="section-sep">
+      <div class="section-label">💸 取り崩し設定（オプション）</div>
+
+      <label class="toggle-row" for="withdrawToggle">
+        <input type="checkbox" id="withdrawToggle" onchange="toggleWithdraw()">
+        <span>取り崩しを有効にする</span>
+      </label>
+
+      <div class="withdraw-box" id="withdrawBox">
+        <div id="wSingleYears">
+          <div class="withdraw-row">
+            <div class="form-group">
+              <label>取り崩し開始年</label>
+              <input type="number" id="withdrawStartYear" value="2020" min="1900" max="2200">
+            </div>
+            <div class="form-group">
+              <label>取り崩し停止年（任意）</label>
+              <input type="number" id="withdrawEndYear" placeholder="空欄＝期間終了まで" min="1900" max="2200">
+            </div>
+          </div>
+          <div class="hint" style="margin-top:-6px;margin-bottom:8px">停止年を設定するとその年末で取り崩しを終了し、以降は残高が自動で再運用されます。</div>
+        </div>
+        <div id="wCompareHint" style="display:none;font-size:0.72rem;color:#8b949e;margin-bottom:8px">各パターンの取り崩し開始・停止年は上の開始年入力欄の下で個別設定してください。</div>
+
+        <div class="withdraw-row">
+          <div class="form-group">
+            <label>定額取り崩し（月額・円）</label>
+            <input type="number" id="fixedMonthlyW" value="100000" min="0" step="5000">
+          </div>
+          <div class="form-group">
+            <label>定率取り崩し（年率・%）</label>
+            <input type="number" id="rateW" value="0" min="0" max="100" step="0.1">
+          </div>
+        </div>
+
+        <div class="withdraw-note">
+          💡 定額・定率は<b>同時設定可</b>です。毎月の取り崩し額 = 定額 + 残高×（年率÷12）<br>
+          どちらかを 0 にすれば片方のみ適用。残高が 0 になると枯渇として記録します。
+        </div>
+      </div>
+
+      <button class="btn-calc" onclick="calculate()">📊 シミュレーション実行</button>
+    </div>
+
+    <!-- ── 結果パネル ── -->
+    <div class="results">
+      <div class="placeholder" id="placeholder">
+        <div class="ico">📊</div>
+        <p>設定を入力して「シミュレーション実行」をクリック</p>
+      </div>
+      <div id="output" style="display:none;flex-direction:column;gap:16px">
+        <div id="loopNotice"  class="notice loop"      style="display:none">⚠️ 一部の期間に実績データが存在しないため、利用可能なデータをループして使用しています。</div>
+        <div id="depletionNotice" class="notice depletion" style="display:none"></div>
+        <div id="cardsArea"></div>
+        <div class="chart-wrap"><canvas id="myChart"></canvas></div>
+        <div class="events-section">
+          <h3>📉 シミュレーション期間中の主要な市場イベント</h3>
+          <div class="events-3col" id="periodEventsGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="all-events-section">
+    <h3>📚 主要な市場暴落の歴史</h3>
+    <div class="events-grid" id="allEventsGrid"></div>
+  </div>
+
+  <div class="returns-section">
+    <h3>📋 各ファンドの年次利回り（1975年〜2025年）</h3>
+    <p class="sub-note">信託報酬控除前の参照指数ベースのリターンです。セルの色は騰落率の大きさを表します。● は主要な市場イベント発生年。「—」はデータ未収録（各ファンドの参照指数が存在しない年）。2025年は収録データなし。</p>
+    <div class="returns-legend">
+      <span><span class="leg-swatch" style="background:rgba(63,185,80,0.55)"></span>大幅上昇（+30%以上）</span>
+      <span><span class="leg-swatch" style="background:rgba(63,185,80,0.22)"></span>上昇（0〜+30%）</span>
+      <span><span class="leg-swatch" style="background:rgba(248,81,73,0.22)"></span>下落（0〜-20%）</span>
+      <span><span class="leg-swatch" style="background:rgba(248,81,73,0.5)"></span>大幅下落（-20%以下）</span>
+    </div>
+    <div class="returns-table-wrap">
+      <table class="returns-table" id="returnsTable">
+        <thead>
+          <tr>
+            <th class="col-year">年</th>
+            <th><span class="fn" style="color:#58a6ff">S&amp;P500</span><span class="ff">eMAXIS Slim 米国株式<br>信託報酬 0.09372%</span></th>
+            <th><span class="fn" style="color:#3fb950">全世界株式</span><span class="ff">eMAXIS Slim オール・カントリー<br>信託報酬 0.05775%</span></th>
+            <th><span class="fn" style="color:#f85149">NASDAQ100</span><span class="ff">ニッセイNASDAQ100<br>信託報酬 0.2035%</span></th>
+            <th><span class="fn" style="color:#f0883e">Nifty50</span><span class="ff">楽天・インド株Nifty50<br>信託報酬 0.2089%</span></th>
+          </tr>
+        </thead>
+        <tbody id="returnsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="gmail-toast" id="gmailToast"></div>
+
+  <div class="disclaimer">
+    ※ このシミュレーションは過去データに基づくものであり、将来の運用成果を保証しません。<br>
+    ※ 各ファンドの実際の運用開始日より前の期間は、参照指数の歴史データを使用しています。<br>
+    ※ データが存在しない期間は利用可能なリターンをループして使用します。税金・為替は考慮していません（Nifty50はINR建て）。
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// FUND DATA
+// ═══════════════════════════════════════════════════════════
+const FUNDS = {
+  sp500: {
+    name:'eMAXIS Slim 米国株式（S&P500）', short:'S&P500',
+    fee:0.09372, color:'#58a6ff',
+    returns:{
+      1928:43.81,1929:-8.30,1930:-25.12,1931:-43.84,1932:-8.64,
+      1933:49.98,1934:-1.19,1935:46.74,1936:31.94,1937:-35.34,
+      1938:29.28,1939:-1.10,1940:-10.67,1941:-12.77,1942:19.17,
+      1943:25.06,1944:19.03,1945:35.82,1946:-8.43,1947:5.20,
+      1948:5.70,1949:18.30,1950:30.81,1951:23.68,1952:18.15,
+      1953:-1.21,1954:52.56,1955:31.56,1956:6.56,1957:-10.78,
+      1958:43.36,1959:11.96,1960:0.47,1961:26.89,1962:-8.73,
+      1963:22.80,1964:16.48,1965:12.45,1966:-10.06,1967:23.98,
+      1968:11.06,1969:-8.50,1970:4.01,1971:14.31,1972:18.98,
+      1973:-14.66,1974:-26.47,1975:37.20,1976:23.84,1977:-7.18,
+      1978:6.56,1979:18.44,1980:32.42,1981:-4.91,1982:21.41,
+      1983:22.51,1984:6.27,1985:32.16,1986:18.47,1987:5.23,
+      1988:16.81,1989:31.49,1990:-3.17,1991:30.55,1992:7.67,
+      1993:9.99,1994:1.31,1995:37.58,1996:22.96,1997:33.36,
+      1998:28.58,1999:21.04,2000:-9.11,2001:-11.89,2002:-22.10,
+      2003:28.68,2004:10.88,2005:4.91,2006:15.79,2007:5.49,
+      2008:-37.00,2009:26.46,2010:15.06,2011:2.11,2012:15.89,
+      2013:32.39,2014:13.69,2015:1.38,2016:11.96,2017:21.83,
+      2018:-4.38,2019:31.49,2020:18.40,2021:28.71,2022:-18.11,
+      2023:26.29,2024:25.02
+    }
+  },
+  acwi: {
+    name:'eMAXIS Slim 全世界株式（オール・カントリー）', short:'全世界株式',
+    fee:0.05775, color:'#3fb950',
+    returns:{
+      1988:24.60,1989:17.42,1990:-16.52,1991:19.02,1992:-4.70,
+      1993:23.12,1994:5.58,1995:21.36,1996:14.01,1997:16.22,
+      1998:24.31,1999:25.02,2000:-13.18,2001:-16.52,2002:-19.32,
+      2003:33.11,2004:14.72,2005:10.84,2006:20.95,2007:11.66,
+      2008:-42.20,2009:34.63,2010:12.67,2011:-7.35,2012:16.13,
+      2013:22.80,2014:4.16,2015:-2.36,2016:7.86,2017:23.97,
+      2018:-9.41,2019:26.60,2020:16.25,2021:18.54,2022:-18.36,
+      2023:22.20,2024:18.01
+    }
+  },
+  nasdaq100: {
+    name:'ニッセイNASDAQ100インデックスファンド', short:'NASDAQ100',
+    fee:0.2035, color:'#f85149',
+    returns:{
+      1985:29.55,1986:7.36,1987:-10.75,1988:14.54,1989:25.71,
+      1990:-16.66,1991:64.55,1992:16.44,1993:12.18,1994:3.20,
+      1995:42.54,1996:42.54,1997:20.63,1998:85.30,1999:101.95,
+      2000:-36.84,2001:-32.65,2002:-37.58,2003:49.12,2004:10.44,
+      2005:1.50,2006:6.79,2007:18.67,2008:-41.89,2009:53.54,
+      2010:19.22,2011:3.02,2012:18.12,2013:34.99,2014:18.80,
+      2015:9.46,2016:7.27,2017:32.66,2018:-0.12,2019:38.96,
+      2020:48.62,2021:27.26,2022:-32.58,2023:53.81,2024:24.88
+    }
+  },
+  nifty50: {
+    name:'楽天・インド株Nifty50インデックスファンド', short:'Nifty50',
+    fee:0.2089, color:'#f0883e',
+    returns:{
+      1996:3.70,1997:13.18,1998:-19.04,1999:66.98,2000:-21.31,
+      2001:-17.88,2002:3.26,2003:71.90,2004:10.68,2005:36.34,
+      2006:39.83,2007:54.77,2008:-51.79,2009:75.76,2010:17.95,
+      2011:-24.62,2012:27.70,2013:6.76,2014:31.39,2015:-4.06,
+      2016:3.01,2017:28.65,2018:3.15,2019:12.02,2020:14.90,
+      2021:24.12,2022:4.33,2023:20.02,2024:8.80
+    }
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+// HISTORICAL EVENTS
+// ═══════════════════════════════════════════════════════════
+const EVENTS = [
+  {ys:1929,ye:1933,name:'世界恐慌',desc:'ウォール街大暴落から始まる大恐慌。S&P500は累計約-89%の下落。',color:'#f85149'},
+  {ys:1937,ye:1938,name:'1937年恐慌（二番底）',desc:'世界恐慌からの回復途中での急落。S&P500は-54%下落。',color:'#f85149'},
+  {ys:1939,ye:1945,name:'第二次世界大戦',desc:'人類史上最大の戦争。世界経済・市場に深刻な打撃。',color:'#8957e5'},
+  {ys:1950,ye:1953,name:'朝鮮戦争',desc:'朝鮮半島での武力衝突。国際情勢の緊張が高まる。',color:'#8957e5'},
+  {ys:1962,ye:1962,name:'キューバ危機',desc:'米ソ核戦争寸前の危機。株式市場も一時急落。',color:'#d29922'},
+  {ys:1973,ye:1974,name:'第1次オイルショック',desc:'第四次中東戦争とOPEC禁輸。S&P500は-48%下落。',color:'#f0883e'},
+  {ys:1979,ye:1980,name:'第2次オイルショック',desc:'イラン革命による石油供給不安。スタグフレーション深刻化。',color:'#f0883e'},
+  {ys:1987,ye:1987,name:'ブラックマンデー',desc:'1987年10月19日、ダウが1日で-22.6%暴落。',color:'#d29922'},
+  {ys:1990,ye:1991,name:'湾岸戦争',desc:'イラクのクウェート侵攻。石油価格急騰で市場混乱。',color:'#8957e5'},
+  {ys:1997,ye:1998,name:'アジア通貨危機',desc:'タイバーツ急落から波及した金融危機。新興国に甚大な被害。',color:'#f0883e'},
+  {ys:1998,ye:1998,name:'LTCM破綻・ロシア危機',desc:'ロシアデフォルトとLTCM破綻で世界的な信用収縮。',color:'#d29922'},
+  {ys:2000,ye:2002,name:'ITバブル崩壊',desc:'ドットコムバブル崩壊。NASDAQ-100は累計-83%の歴史的大暴落。',color:'#f85149'},
+  {ys:2001,ye:2001,name:'9.11同時多発テロ',desc:'NYテロ後市場閉鎖。S&P500は1週間で-12%急落。',color:'#8957e5'},
+  {ys:2007,ye:2009,name:'リーマンショック',desc:'サブプライムローン危機から波及した世界金融危機。S&P500は-57%下落。',color:'#f85149'},
+  {ys:2010,ye:2012,name:'欧州債務危機',desc:'ギリシャ等南欧の財政危機。ユーロ存続への懸念。',color:'#f0883e'},
+  {ys:2015,ye:2016,name:'中国株式市場暴落',desc:'上海株急落・人民元切り下げショック。',color:'#d29922'},
+  {ys:2020,ye:2020,name:'コロナショック',desc:'COVID-19パンデミック。S&P500は約5週で-34%の急落。',color:'#8957e5'},
+  {ys:2022,ye:2022,name:'ウクライナ侵攻・利上げ危機',desc:'ロシアのウクライナ侵攻とFRBの歴史的利上げ。S&P500は-19%。',color:'#f0883e'},
+];
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let investType = 'lumpsum';
+let simMode    = 'single';
+let myChart    = null;
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  onFundChange();
+  renderAllEvents();
+  renderReturnsTable();
+});
+
+function onFundChange() {
+  const f = FUNDS[document.getElementById('fundSelect').value];
+  const yrs = Object.keys(f.returns).map(Number).sort((a,b)=>a-b);
+  document.getElementById('feeHint').textContent = `信託報酬: ${f.fee}%/年`;
+  document.getElementById('dataHint').textContent =
+    `実績データ: ${yrs[0]}年〜${yrs[yrs.length-1]}年（範囲外はループ使用）`;
+}
+
+function setType(type, btn) {
+  investType = type;
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('lsGroup').style.display       = type==='lumpsum' ? 'block' : 'none';
+  document.getElementById('mtGroup').style.display       = type==='monthly' ? 'block' : 'none';
+  document.getElementById('mtGroup2').style.display      = type==='monthly' ? 'block' : 'none';
+  document.getElementById('mtChangeGroup').style.display = type==='monthly' ? 'block' : 'none';
+}
+
+function setSimMode(mode, btn) {
+  simMode = mode;
+  document.querySelectorAll('.tab').forEach(b => {
+    if (b.onclick && b.onclick.toString().includes('setSimMode')) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  document.getElementById('singleYearGroup').style.display  = mode === 'single'  ? 'block' : 'none';
+  document.getElementById('compareYearGroup').style.display = mode === 'compare' ? 'block' : 'none';
+  document.getElementById('pat4RefYearRow').style.display   = mode === 'compare' ? 'block' : 'none';
+  // 取り崩し年の表示切替
+  const wEnabled = document.getElementById('withdrawToggle').checked;
+  document.getElementById('wSingleYears').style.display  = mode === 'single'  ? 'block' : 'none';
+  document.getElementById('wCompareHint').style.display  = (mode === 'compare' && wEnabled) ? 'block' : 'none';
+  document.querySelectorAll('.w-years-cmp').forEach(el => {
+    el.style.display = (mode === 'compare' && wEnabled) ? 'block' : 'none';
+  });
+}
+
+function toggleWithdraw() {
+  const enabled = document.getElementById('withdrawToggle').checked;
+  document.getElementById('withdrawBox').classList.toggle('open', enabled);
+  document.getElementById('wSingleYears').style.display  = simMode === 'single' ? 'block' : 'none';
+  document.getElementById('wCompareHint').style.display  = (simMode === 'compare' && enabled) ? 'block' : 'none';
+  document.querySelectorAll('.w-years-cmp').forEach(el => {
+    el.style.display = (simMode === 'compare' && enabled) ? 'block' : 'none';
+  });
+}
+
+let mtChangeRowCount = 0;
+
+function toggleMtChange() {
+  const enabled = document.getElementById('mtChangeToggle').checked;
+  document.getElementById('mtChangeBox').classList.toggle('open', enabled);
+  if (enabled && document.getElementById('mtChangeList').children.length === 0) {
+    addMtChangeRow(10, 50000); // デフォルト1行
+  }
+}
+
+function addMtChangeRow(defaultAfter = '', defaultAmt = '') {
+  const id = mtChangeRowCount++;
+  const row = document.createElement('div');
+  row.className = 'mt-change-row';
+  row.innerHTML = `
+    <div class="form-group">
+      <label style="font-size:.75rem;color:#8b949e">積立開始から何年後</label>
+      <input type="number" class="mc-after" value="${defaultAfter}" placeholder="例: 10" min="1" max="99">
+    </div>
+    <div class="form-group">
+      <label style="font-size:.75rem;color:#8b949e">変更後の積立金額（円）</label>
+      <input type="number" class="mc-amt" value="${defaultAmt}" placeholder="例: 50000" min="0" step="1000">
+    </div>
+    <button class="btn-rm-mt" onclick="removeMtChangeRow(this)" title="削除">✕</button>
+  `;
+  document.getElementById('mtChangeList').appendChild(row);
+}
+
+function removeMtChangeRow(btn) {
+  btn.closest('.mt-change-row').remove();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RETURN LOOKUP (with loop)
+// ═══════════════════════════════════════════════════════════
+function getReturn(fund, year) {
+  if (fund.returns[year] !== undefined) return {v: fund.returns[year], looped: false};
+  const yrs = Object.keys(fund.returns).map(Number).sort((a,b)=>a-b);
+  const n = yrs.length;
+  const idx = ((year - yrs[0]) % n + n) % n;
+  return {v: fund.returns[yrs[idx]], looped: true};
+}
+
+// ═══════════════════════════════════════════════════════════
+// FORMAT
+// ═══════════════════════════════════════════════════════════
+function fmt(n) {
+  const abs = Math.abs(n);
+  if (abs >= 1e8) return (n/1e8).toFixed(2) + '億円';
+  if (abs >= 1e4) return Math.round(n/1e4).toLocaleString() + '万円';
+  return Math.round(n).toLocaleString() + '円';
+}
+
+// ═══════════════════════════════════════════════════════════
+// SIMULATE (single pattern)
+// ═══════════════════════════════════════════════════════════
+function runSimulation(fund, startYear, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, customRate = null, mtChangePts = []) {
+  const initVal = investType === 'lumpsum' ? lsAmt : mtInitAmt;
+  let val = initVal, totalInvested = initVal, totalWithdrawn = 0;
+  let depletionYear = null, wStartVal = null, wStopVal = null, hasLooped = false;
+
+  const points = [{year: startYear, value: initVal, invested: initVal, withdrawn: 0}];
+
+  for (let i = 0; i < duration; i++) {
+    const yr = startYear + i;
+    const isWithdrawing = wEnabled && yr >= wStartYear && yr <= wEndYear;
+    if (wEnabled && yr === wStartYear && wStartVal === null) wStartVal = val;
+
+    if (depletionYear !== null) {
+      points.push({year: yr+1, value: 0, invested: totalInvested, withdrawn: totalWithdrawn});
+      continue;
+    }
+
+    let annualNetReturn;
+    if (customRate !== null) {
+      annualNetReturn = customRate;
+    } else {
+      const {v: annRet, looped} = getReturn(fund, yr);
+      if (looped) hasLooped = true;
+      annualNetReturn = annRet - fund.fee;
+    }
+    const mRet = Math.pow(1 + annualNetReturn / 100, 1/12) - 1;
+    let effectiveMtAmt = mtAmt;
+    for (const pt of mtChangePts) { if (i >= pt.after) effectiveMtAmt = pt.amount; }
+
+    for (let m = 0; m < 12; m++) {
+      if (!isWithdrawing && investType === 'monthly') { val += effectiveMtAmt; totalInvested += effectiveMtAmt; }
+      val *= (1 + mRet);
+      if (isWithdrawing) {
+        const w = Math.min(fixedMonthlyW + val * (rateAnnualW / 100 / 12), Math.max(0, val));
+        val -= w; totalWithdrawn += w;
+        if (val < 1) { val = 0; depletionYear = yr; break; }
+      }
+    }
+    if (wEnabled && wEndYear !== Infinity && yr === wEndYear && !depletionYear) wStopVal = Math.max(0, val);
+    points.push({year: yr+1, value: Math.max(0, val), invested: totalInvested, withdrawn: totalWithdrawn});
+  }
+
+  const finalVal    = points[points.length-1].value;
+  const totalReturn = finalVal + totalWithdrawn;
+  const profit      = finalVal - totalInvested;
+  const cagr        = totalInvested > 0 ? (Math.pow(totalReturn / totalInvested, 1/duration) - 1) * 100 : 0;
+  return { startYear, endYear: startYear + duration - 1, points, totalInvested, totalWithdrawn, finalVal, profit, totalReturn, cagr, depletionYear, wStartVal, wStopVal, hasLooped };
+}
+
+// ═══════════════════════════════════════════════════════════
+// CALCULATE  (3 patterns)
+// ═══════════════════════════════════════════════════════════
+function calculate() {
+  simMode === 'single' ? calculateSingle() : calculateCompare();
+}
+
+// ── 共通設定の読み取り ──────────────────────────────────────
+function readCommonSettings() {
+  const fund     = FUNDS[document.getElementById('fundSelect').value];
+  const duration = parseInt(document.getElementById('duration').value);
+  if (!duration || duration < 1) { alert('運用期間を正しく入力してください'); return null; }
+
+  const wEnabled      = document.getElementById('withdrawToggle').checked;
+  const wStartYear    = wEnabled ? parseInt(document.getElementById('withdrawStartYear').value) : Infinity;
+  const wEndYearRaw   = document.getElementById('withdrawEndYear').value;
+  const wEndYear      = wEnabled && wEndYearRaw !== '' ? parseInt(wEndYearRaw) : Infinity;
+  const fixedMonthlyW = wEnabled ? (parseFloat(document.getElementById('fixedMonthlyW').value) || 0) : 0;
+  const rateAnnualW   = wEnabled ? (parseFloat(document.getElementById('rateW').value) || 0) : 0;
+
+  if (wEnabled) {
+    if (isNaN(wStartYear)) { alert('取り崩し開始年を入力してください'); return null; }
+    if (wEndYear !== Infinity && wEndYear <= wStartYear) { alert('取り崩し停止年は開始年より後に設定してください'); return null; }
+    if (fixedMonthlyW === 0 && rateAnnualW === 0) { alert('定額または定率のどちらかを 0 より大きく設定してください'); return null; }
+  }
+
+  const lsAmt     = parseFloat(document.getElementById('lsAmt').value) || 0;
+  const mtAmt     = parseFloat(document.getElementById('mtAmt').value) || 0;
+  const mtInitAmt = parseFloat(document.getElementById('mtInitAmt').value) || 0;
+  if (investType === 'lumpsum' && lsAmt <= 0) { alert('投資金額を入力してください'); return null; }
+  if (investType === 'monthly' && mtAmt <= 0)  { alert('積立金額を入力してください'); return null; }
+
+  const mtChangeEnabled = investType === 'monthly' && document.getElementById('mtChangeToggle').checked;
+  let mtChangePts = [];
+  if (mtChangeEnabled) {
+    const rows = document.querySelectorAll('#mtChangeList .mt-change-row');
+    if (rows.length === 0) { alert('変更ポイントを1つ以上追加してください'); return null; }
+    for (const row of rows) {
+      const after  = parseInt(row.querySelector('.mc-after').value);
+      const amount = parseFloat(row.querySelector('.mc-amt').value);
+      if (isNaN(after) || after < 1) { alert('変更タイミングは1以上の年数で入力してください'); return null; }
+      if (isNaN(amount) || amount < 0) { alert('変更後の積立金額を0以上で入力してください'); return null; }
+      mtChangePts.push({ after, amount });
+    }
+    mtChangePts.sort((a, b) => a.after - b.after);
+  }
+
+  return { fund, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, mtChangePts };
+}
+
+// ═══════════════════════════════════════════════════════════
+// SINGLE MODE
+// ═══════════════════════════════════════════════════════════
+function calculateSingle() {
+  const s = readCommonSettings();
+  if (!s) return;
+  const { fund, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt } = s;
+
+  const startYear = parseInt(document.getElementById('startYear').value);
+  if (isNaN(startYear)) { alert('投資開始年を入力してください'); return; }
+
+  const r = runSimulation(fund, startYear, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, null, s.mtChangePts);
+
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('output').style.display = 'flex';
+  document.getElementById('loopNotice').style.display = r.hasLooped ? 'block' : 'none';
+
+  const depEl = document.getElementById('depletionNotice');
+  if (r.depletionYear !== null) {
+    depEl.style.display = 'block';
+    depEl.textContent = `⚠️ ${r.depletionYear + 1}年に残高が枯渇しました。取り崩し額の見直しをご検討ください。`;
+  } else { depEl.style.display = 'none'; }
+
+  renderSingleCards(r, wEnabled, wStartYear, wEndYear);
+  renderSingleChart(fund, r, wEnabled, wStartYear, wEndYear);
+  renderSingleEvents(r);
+}
+
+function renderSingleCards(r, wEnabled, wStartYear, wEndYear) {
+  const ca = document.getElementById('cardsArea');
+  if (!wEnabled) {
+    ca.innerHTML = `
+      <div class="cards">
+        <div class="card"><div class="card-lbl">投資元本</div><div class="card-val blue">${fmt(r.totalInvested)}</div></div>
+        <div class="card"><div class="card-lbl">最終評価額</div><div class="card-val ${r.profit>=0?'green':'red'}">${fmt(r.finalVal)}</div></div>
+        <div class="card"><div class="card-lbl">損益</div><div class="card-val ${r.profit>=0?'green':'red'}">${r.profit>=0?'+':''}${fmt(r.profit)}</div></div>
+        <div class="card"><div class="card-lbl">年平均リターン (CAGR)</div><div class="card-val ${r.cagr>=0?'green':'red'}">${r.cagr>=0?'+':''}${r.cagr.toFixed(2)}%</div></div>
+      </div>`;
+  } else {
+    const hasStop = wEndYear !== Infinity && wEndYear <= r.endYear;
+    const depText = r.depletionYear !== null ? `${r.depletionYear+1}年に枯渇` : '枯渇なし ✓';
+    ca.innerHTML = `
+      <div class="cards-row">
+        <div class="cards${hasStop?'':' wide'}">
+          <div class="card"><div class="card-lbl">投資元本（累計）</div><div class="card-val blue">${fmt(r.totalInvested)}</div></div>
+          <div class="card highlight-w"><div class="card-lbl">取り崩し開始時の残高（${wStartYear}年）</div><div class="card-val purple">${r.wStartVal!=null?fmt(r.wStartVal):'—'}</div></div>
+          ${hasStop?`<div class="card highlight-w"><div class="card-lbl">取り崩し停止時の残高（${wEndYear}年末）</div><div class="card-val purple">${r.wStopVal!=null?fmt(r.wStopVal):'—'}</div></div>`:''}
+          <div class="card"><div class="card-lbl">最終残高</div><div class="card-val ${r.finalVal>0?'green':'red'}">${fmt(r.finalVal)}</div></div>
+        </div>
+        <div class="cards wide">
+          <div class="card highlight-w"><div class="card-lbl">総取り崩し額</div><div class="card-val purple">${fmt(r.totalWithdrawn)}</div></div>
+          <div class="card"><div class="card-lbl">受取総額（残高＋取り崩し計）</div><div class="card-val ${r.totalReturn>=r.totalInvested?'green':'red'}">${fmt(r.totalReturn)}</div><div class="card-sub">${r.totalReturn>=r.totalInvested?'+':''}${fmt(r.totalReturn-r.totalInvested)}</div></div>
+          <div class="card ${r.depletionYear!==null?'highlight-d':''}"><div class="card-lbl">残高枯渇</div><div class="card-val ${r.depletionYear!==null?'red':'green'}">${depText}</div></div>
+        </div>
+      </div>`;
+  }
+}
+
+function renderSingleChart(fund, r, wEnabled, wStartYear, wEndYear) {
+  if (myChart) { myChart.destroy(); myChart = null; }
+  const ctx    = document.getElementById('myChart').getContext('2d');
+  const labels = r.points.map(p => p.year + '年');
+  const datasets = [
+    { label:'評価額（残高）', data:r.points.map(p=>p.value), borderColor:fund.color, backgroundColor:fund.color+'18', fill:true, tension:0.35, pointRadius:r.points.length>30?2:4, pointHoverRadius:6, borderWidth:2.5 },
+    { label:'投資元本（累計）', data:r.points.map(p=>p.invested), borderColor:'rgba(255,255,255,0.35)', backgroundColor:'rgba(255,255,255,0.03)', fill:true, tension:0, borderDash:[5,5], pointRadius:0, pointHoverRadius:4, borderWidth:1.5 },
+  ];
+  if (wEnabled) datasets.push({ label:'累計取り崩し額', data:r.points.map(p=>p.withdrawn), borderColor:'#bc8cff', backgroundColor:'rgba(188,140,255,0.07)', fill:true, tension:0.2, borderDash:[3,3], pointRadius:0, pointHoverRadius:4, borderWidth:2 });
+
+  const annotations = {};
+  EVENTS.filter(e => e.ys <= r.endYear && e.ye >= r.startYear).forEach((ev, i) => {
+    const lbl = Math.max(ev.ys, r.startYear) + '年';
+    if (labels.includes(lbl)) annotations['ev'+i] = { type:'line', scaleID:'x', value:lbl, borderColor:ev.color+'99', borderWidth:1.5, borderDash:[4,4] };
+  });
+  if (wEnabled) {
+    const ws = wStartYear + '年', hasStop = wEndYear !== Infinity && wEndYear <= r.endYear;
+    const boxXMax = hasStop && labels.includes((wEndYear+1)+'年') ? (wEndYear+1)+'年' : labels[labels.length-1];
+    if (labels.includes(ws)) {
+      annotations.wLine = { type:'line', scaleID:'x', value:ws, borderColor:'#bc8cff', borderWidth:2.5, label:{ display:true, content:'💸 取り崩し開始', position:'start', backgroundColor:'rgba(137,87,229,0.85)', color:'#fff', font:{size:11,weight:'bold'}, padding:{x:7,y:4}, yAdjust:10 } };
+      annotations.wBox  = { type:'box', xMin:ws, xMax:boxXMax, backgroundColor:'rgba(137,87,229,0.05)', borderWidth:0 };
+    }
+    if (hasStop && labels.includes((wEndYear+1)+'年')) {
+      annotations.wEnd = { type:'line', scaleID:'x', value:(wEndYear+1)+'年', borderColor:'#bc8cff', borderWidth:2, borderDash:[6,3], label:{ display:true, content:'⏹ 取り崩し停止', position:'start', backgroundColor:'rgba(80,40,140,0.85)', color:'#fff', font:{size:11,weight:'bold'}, padding:{x:7,y:4}, yAdjust:45 } };
+    }
+  }
+
+  myChart = new Chart(ctx, {
+    type:'line', data:{ labels, datasets },
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{labels:{color:'#8b949e',font:{size:12},padding:16}}, tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt(c.raw)}}, annotation:{annotations} },
+      scales:{ x:{ticks:{color:'#6e7681',font:{size:10},maxTicksLimit:15},grid:{color:'rgba(255,255,255,0.04)'}}, y:{ticks:{color:'#6e7681',font:{size:10},callback:v=>Math.abs(v)>=1e8?(v/1e8).toFixed(1)+'億':Math.abs(v)>=1e4?Math.round(v/1e4).toLocaleString()+'万':v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}} }
+    }
+  });
+}
+
+function renderSingleEvents(r) {
+  const evts = EVENTS.filter(e => e.ys <= r.endYear && e.ye >= r.startYear);
+  const grid = document.getElementById('periodEventsGrid');
+  if (evts.length === 0) { grid.innerHTML = '<p style="color:#3d444d;font-size:.82rem">この期間に主要なイベントはありません</p>'; return; }
+  grid.innerHTML = `<div style="grid-column:1/-1"><div class="events-grid">${
+    evts.map(e=>`<div class="ev-card" style="border-color:${e.color}"><h4 style="color:${e.color}">${e.ys===e.ye?e.ys+'年':e.ys+'〜'+e.ye+'年'} ${e.name}</h4><p>${e.desc}</p></div>`).join('')
+  }</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPARE MODE
+// ═══════════════════════════════════════════════════════════
+function calculateCompare() {
+  const s = readCommonSettings();
+  if (!s) return;
+  const { fund, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, mtChangePts } = s;
+
+  const startYear1 = parseInt(document.getElementById('startYear1').value);
+  const startYear2 = parseInt(document.getElementById('startYear2').value);
+  const startYear3 = parseInt(document.getElementById('startYear3').value);
+  if ([startYear1, startYear2, startYear3].some(y => isNaN(y))) { alert('パターン①②③の開始年をすべて入力してください'); return; }
+
+  const customRate4Raw = document.getElementById('customRate4').value.trim();
+  const customRate4 = customRate4Raw !== '' ? parseFloat(customRate4Raw) : null;
+  const usePattern4 = customRate4 !== null && !isNaN(customRate4);
+
+  const PAT_COLORS = ['#58a6ff', '#f0883e', '#3fb950', '#e3b341'];
+  const patterns = [
+    { startYear: startYear1, customRate: null },
+    { startYear: startYear2, customRate: null },
+    { startYear: startYear3, customRate: null },
+  ];
+  const startYear4ref = parseInt(document.getElementById('startYear4ref').value) || startYear1;
+  if (usePattern4) patterns.push({ startYear: startYear4ref, customRate: customRate4 });
+
+  const startYears  = patterns.map(p => p.startYear);
+  const customRates = patterns.map(p => p.customRate);
+
+  // パターン別取り崩し年（compareモード個別設定）
+  const wStartIds = ['wStart1','wStart2','wStart3','wStart4'];
+  const wEndIds   = ['wEnd1',  'wEnd2',  'wEnd3',  'wEnd4' ];
+  const patWStarts = patterns.map((_, i) => {
+    if (!wEnabled) return Infinity;
+    const v = parseInt(document.getElementById(wStartIds[i]).value);
+    return isNaN(v) ? wStartYear : v;
+  });
+  const patWEnds = patterns.map((_, i) => {
+    if (!wEnabled) return Infinity;
+    const raw = document.getElementById(wEndIds[i]).value;
+    return raw !== '' ? parseInt(raw) : Infinity;
+  });
+
+  if (wEnabled) {
+    for (let i = 0; i < patterns.length; i++) {
+      if (isNaN(patWStarts[i])) { alert(`パターン${['①','②','③','④'][i]}の取り崩し開始年を入力してください`); return; }
+      if (patWEnds[i] !== Infinity && patWEnds[i] <= patWStarts[i]) { alert(`パターン${['①','②','③','④'][i]}の取り崩し停止年は開始年より後に設定してください`); return; }
+    }
+  }
+
+  const results = patterns.map((p, i) =>
+    runSimulation(fund, p.startYear, duration, wEnabled, patWStarts[i], patWEnds[i], fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, p.customRate, mtChangePts)
+  );
+
+  // Show output
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('output').style.display = 'flex';
+
+  document.getElementById('loopNotice').style.display = results.some(r => r.hasLooped) ? 'block' : 'none';
+
+  const depEl = document.getElementById('depletionNotice');
+  const pats  = ['①','②','③','④'];
+  const depleted = results.map((r,i) => r.depletionYear !== null ? `パターン${pats[i]}（${r.depletionYear+1}年）` : null).filter(Boolean);
+  depEl.style.display = depleted.length ? 'block' : 'none';
+  if (depleted.length) depEl.textContent = `⚠️ 残高が枯渇したパターン: ${depleted.join('、')}`;
+
+  renderComparisonTable(results, startYears, duration, PAT_COLORS, wEnabled, patWStarts, patWEnds, customRates);
+  renderComparisonChart(fund, results, startYears, duration, PAT_COLORS, wEnabled, patWStarts, patWEnds, customRates);
+  renderPeriodEvents3(results, startYears, PAT_COLORS, customRates);
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPARISON TABLE
+// ═══════════════════════════════════════════════════════════
+function renderComparisonTable(results, startYears, duration, colors, wEnabled, patWStarts, patWEnds, customRates = []) {
+  const pats = ['①','②','③','④'];
+  const cv   = (v, pos) => `<span class="${pos?'green':'red'}">${v}</span>`;
+
+  let heads = `<th class="th-label"></th>`;
+  results.forEach((r,i) => {
+    const isCustom = customRates[i] !== null && customRates[i] !== undefined;
+    const rangeLabel = isCustom
+      ? `固定年率 ${customRates[i]>=0?'+':''}${customRates[i].toFixed(1)}%`
+      : `${r.startYear}〜${r.endYear}年`;
+    heads += `<th><span class="pat-name" style="color:${colors[i]}">パターン${pats[i]}</span><span class="pat-range">${rangeLabel}</span></th>`;
+  });
+
+  const row = (lbl, vals) =>
+    `<tr><td class="td-label">${lbl}</td>${vals.map(v=>`<td class="val">${v}</td>`).join('')}</tr>`;
+
+  let rows = '';
+  rows += row('投資元本（累計）',       results.map(r => `<span class="blue">${fmt(r.totalInvested)}</span>`));
+  rows += row('最終評価額（残高）',     results.map(r => cv(fmt(r.finalVal), r.finalVal >= r.totalInvested)));
+  rows += row('損益',                   results.map(r => cv((r.profit>=0?'+':'')+fmt(r.profit), r.profit>=0)));
+  rows += row('損益率',                 results.map(r => { const p=r.totalInvested>0?r.profit/r.totalInvested*100:0; return cv((p>=0?'+':'')+p.toFixed(1)+'%',p>=0); }));
+  rows += row('年平均リターン (CAGR)',   results.map(r => cv((r.cagr>=0?'+':'')+r.cagr.toFixed(2)+'%', r.cagr>=0)));
+
+  if (wEnabled) {
+    const colspan = results.length + 1;
+    const wLabels = results.map((_, i) => {
+      const ws = patWStarts[i] !== Infinity ? patWStarts[i]+'年〜' : '';
+      const we = patWEnds[i]   !== Infinity ? patWEnds[i]+'年'    : '終了まで';
+      return ws ? `${ws}${we}` : '';
+    });
+    rows += `<tr class="sep-row"><td colspan="${colspan}">💸 取り崩し情報</td></tr>`;
+    rows += row('取り崩し期間', results.map((_,i) => `<span style="color:#bc8cff;font-size:.78rem">${wLabels[i]}</span>`));
+    rows += row('取り崩し開始時残高', results.map(r => r.wStartVal!=null?`<span class="purple">${fmt(r.wStartVal)}</span>`:'—'));
+    const anyStop = patWEnds.some(e => e !== Infinity);
+    if (anyStop) rows += row('取り崩し停止時残高', results.map(r => r.wStopVal!=null?`<span class="purple">${fmt(r.wStopVal)}</span>`:'—'));
+    rows += row('総取り崩し額',          results.map(r => `<span class="purple">${fmt(r.totalWithdrawn)}</span>`));
+    rows += row('受取総額（残高＋取崩）', results.map(r => cv(fmt(r.totalReturn), r.totalReturn>=r.totalInvested)));
+    rows += row('残高枯渇',              results.map(r => r.depletionYear!==null?`<span class="red">${r.depletionYear+1}年に枯渇</span>`:`<span class="green">枯渇なし ✓</span>`));
+  }
+
+  document.getElementById('cardsArea').innerHTML = `
+    <div class="cmp-table-wrap">
+      <table class="cmp-table"><thead><tr>${heads}</tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPARISON CHART  (elapsed-years x-axis)
+// ═══════════════════════════════════════════════════════════
+function renderComparisonChart(fund, results, startYears, duration, colors, wEnabled, patWStarts, patWEnds, customRates = []) {
+  if (myChart) { myChart.destroy(); myChart = null; }
+  const ctx    = document.getElementById('myChart').getContext('2d');
+  const labels = Array.from({length: duration + 1}, (_, i) => i + '年目');
+  const pats   = ['①','②','③','④'];
+
+  const datasets = results.map((r, i) => {
+    const isCustom = customRates[i] !== null && customRates[i] !== undefined;
+    const lbl = isCustom
+      ? `パターン${pats[i]}（固定年率 ${customRates[i]>=0?'+':''}${customRates[i].toFixed(1)}%）`
+      : `パターン${pats[i]}（${startYears[i]}年〜）`;
+    return {
+      label: lbl,
+      data: r.points.map(p => p.value),
+      borderColor: colors[i],
+      backgroundColor: colors[i] + (i === 0 ? '14' : '00'),
+      fill: i === 0,
+      tension: 0.35,
+      pointRadius: duration > 30 ? 2 : 4,
+      pointHoverRadius: 6,
+      borderWidth: 2.5,
+    };
+  });
+
+  // Annotations: withdrawal lines per pattern
+  const annotations = {};
+  if (wEnabled) {
+    results.forEach((r, i) => {
+      const wStart = patWStarts[i];
+      const wEnd   = patWEnds[i];
+      const es = wStart - startYears[i];
+      if (es >= 0 && es <= duration) {
+        annotations[`ws${i}`] = {
+          type: 'line', scaleID: 'x', value: labels[es],
+          borderColor: colors[i] + 'bb', borderWidth: 2, borderDash: [4, 3],
+          label: {
+            display: true, content: `${pats[i]}取崩開始`,
+            position: 'start', backgroundColor: colors[i] + 'cc',
+            color: '#fff', font: { size: 9, weight: 'bold' },
+            padding: { x: 4, y: 3 }, yAdjust: 10 + i * 26
+          }
+        };
+      }
+      if (wEnd !== Infinity) {
+        const ee = wEnd - startYears[i] + 1;
+        if (ee >= 0 && ee <= duration) {
+          annotations[`we${i}`] = {
+            type: 'line', scaleID: 'x', value: labels[ee],
+            borderColor: colors[i] + '66', borderWidth: 1.5, borderDash: [3, 4],
+          };
+        }
+      }
+    });
+  }
+
+  myChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color:'#8b949e', font:{size:12}, padding:16 } },
+        tooltip: {
+          callbacks: {
+            title: items => `${items[0].label}（経過年数）`,
+            label: c => {
+              const isCustom = customRates[c.datasetIndex] !== null && customRates[c.datasetIndex] !== undefined;
+              if (isCustom) return ` ${c.dataset.label}: ${fmt(c.raw)}`;
+              const yr = startYears[c.datasetIndex] + c.dataIndex;
+              return ` ${c.dataset.label}: ${fmt(c.raw)}  (${yr}年)`;
+            }
+          }
+        },
+        annotation: { annotations }
+      },
+      scales: {
+        x: { ticks: { color:'#6e7681', font:{size:10}, maxTicksLimit:15 }, grid: { color:'rgba(255,255,255,0.04)' } },
+        y: {
+          ticks: {
+            color:'#6e7681', font:{size:10},
+            callback: v => {
+              if (Math.abs(v)>=1e8) return (v/1e8).toFixed(1)+'億';
+              if (Math.abs(v)>=1e4) return Math.round(v/1e4).toLocaleString()+'万';
+              return v.toLocaleString();
+            }
+          },
+          grid: { color:'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERIOD EVENTS  (3-column)
+// ═══════════════════════════════════════════════════════════
+function renderPeriodEvents3(results, startYears, colors, customRates = []) {
+  const pats = ['①','②','③','④'];
+  document.getElementById('periodEventsGrid').innerHTML = results.map((r, i) => {
+    const isCustom = customRates[i] !== null && customRates[i] !== undefined;
+    const header = isCustom
+      ? `パターン${pats[i]}（固定年率 ${customRates[i]>=0?'+':''}${customRates[i].toFixed(1)}%）`
+      : `パターン${pats[i]}（${startYears[i]}〜${r.endYear}年）`;
+    let body;
+    if (isCustom) {
+      body = '<p style="color:#6e7681;font-size:.75rem">固定年率パターンは履歴イベントに依存しません</p>';
+    } else {
+      const evts = EVENTS.filter(e => e.ys <= r.endYear && e.ye >= r.startYear);
+      body = evts.length === 0
+        ? '<p style="color:#3d444d;font-size:.75rem">主要イベントなし</p>'
+        : evts.map(e => `
+            <div class="ev-card" style="border-color:${e.color};margin-bottom:6px">
+              <h4 style="color:${e.color}">${e.ys===e.ye?e.ys+'年':e.ys+'〜'+e.ye+'年'} ${e.name}</h4>
+              <p>${e.desc}</p>
+            </div>`).join('');
+    }
+    return `<div class="events-3col-item">
+      <h4 style="color:${colors[i]}">${header}</h4>
+      ${body}
+    </div>`;
+  }).join('');
+}
+
+function renderAllEvents() {
+  document.getElementById('allEventsGrid').innerHTML = EVENTS.map(e => `
+    <div class="ev-card" style="border-color:${e.color}">
+      <h4 style="color:${e.color}">${e.ys===e.ye ? e.ys+'年' : e.ys+'〜'+e.ye+'年'} ${e.name}</h4>
+      <p>${e.desc}</p>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RETURNS TABLE (2000–2024)
+// ═══════════════════════════════════════════════════════════
+function renderReturnsTable() {
+  const FUND_KEYS = ['sp500', 'acwi', 'nasdaq100', 'nifty50'];
+  const FUND_COLORS = { sp500:'#58a6ff', acwi:'#3fb950', nasdaq100:'#f85149', nifty50:'#f0883e' };
+
+  function cellBg(ret) {
+    if (ret === undefined) return '';
+    if (ret >= 50)  return 'background:rgba(63,185,80,0.45)';
+    if (ret >= 30)  return 'background:rgba(63,185,80,0.25)';
+    if (ret >= 0)   return 'background:rgba(63,185,80,0.10)';
+    if (ret >= -20) return 'background:rgba(248,81,73,0.15)';
+    return                  'background:rgba(248,81,73,0.38)';
+  }
+
+  let rows = '';
+  for (let yr = 1975; yr <= 2025; yr++) {
+    const evt = EVENTS.find(e => e.ys <= yr && e.ye >= yr);
+    const evtMark = evt
+      ? ` <span title="${evt.name}" style="color:${evt.color};font-size:.7rem;vertical-align:middle">●</span>`
+      : '';
+
+    let cells = `<td class="col-year">${yr}年${evtMark}</td>`;
+    FUND_KEYS.forEach(k => {
+      const ret = FUNDS[k].returns[yr];
+      if (ret === undefined) {
+        cells += `<td class="ret-na">—</td>`;
+      } else {
+        const sign = ret >= 0 ? '+' : '';
+        const cls  = ret >= 0 ? 'ret-pos' : 'ret-neg';
+        cells += `<td class="${cls}" style="${cellBg(ret)}">${sign}${ret.toFixed(2)}%</td>`;
+      }
+    });
+    rows += `<tr>${cells}</tr>`;
+  }
+  document.getElementById('returnsTableBody').innerHTML = rows;
+}
+
+// ═══════════════════════════════════════════════════════════
+// GMAIL SEND
+// ═══════════════════════════════════════════════════════════
+function sendViaGmail() {
+  // 1. HTMLファイルをBlobとしてダウンロード
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'investment-simulator.html';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // 2. Gmailの作成画面を開く
+  setTimeout(() => {
+    const subject = encodeURIComponent('投資信託シミュレーター');
+    const body    = encodeURIComponent(
+      '投資信託シミュレーターを添付します。\n\n' +
+      'ブラウザで開くとシミュレーションをご利用いただけます。\n\n' +
+      '【対応ファンド】\n' +
+      '・eMAXIS Slim 米国株式（S&P500）\n' +
+      '・eMAXIS Slim 全世界株式（オール・カントリー）\n' +
+      '・ニッセイNASDAQ100インデックスファンド\n' +
+      '・楽天・インド株Nifty50インデックスファンド\n\n' +
+      '【機能】\n' +
+      '・一括投資 / 積立投資シミュレーション\n' +
+      '・取り崩し設定（定額・定率）\n' +
+      '・過去の市場暴落イベント表示'
+    );
+    window.open(
+      `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`,
+      '_blank'
+    );
+  }, 500);
+
+  // 3. 操作ガイドのトースト表示
+  const toast = document.getElementById('gmailToast');
+  toast.innerHTML =
+    '✅ <b>investment-simulator.html</b> をダウンロードしました。<br>' +
+    '開いたGmailの作成画面で 📎 をクリックするか、<br>' +
+    'ファイルをドラッグ＆ドロップして添付してください。';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 8000);
+}
+</script>
+</body>
+</html>
