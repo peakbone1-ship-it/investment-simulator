@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>胃X線バリウム検査 国試対策問題集</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-sub: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  header h1 { font-size: 1.5rem; font-weight: 700; }
+  header p { font-size: 0.9rem; opacity: 0.85; margin-top: 6px; }
+
+  .container { max-width: 760px; margin: 0 auto; padding: 20px; }
+
+  /* トップ画面 */
+  #start-screen { text-align: center; padding: 40px 20px; }
+  #start-screen h2 { font-size: 1.3rem; margin-bottom: 12px; }
+  #start-screen p { color: var(--text-sub); margin-bottom: 8px; font-size: 0.95rem; }
+  .category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 24px 0;
+    text-align: left;
+  }
+  .category-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .category-card:hover, .category-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  .category-card.selected { background: #eff6ff; }
+  .category-card .cat-icon { font-size: 1.4rem; margin-bottom: 4px; }
+  .category-card .cat-name { font-weight: 600; font-size: 0.9rem; }
+  .category-card .cat-count { font-size: 0.78rem; color: var(--text-sub); }
+
+  .btn {
+    display: inline-block;
+    padding: 12px 32px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-outline:hover { background: #eff6ff; }
+
+  /* 進捗バー */
+  .progress-bar-wrap {
+    background: var(--border);
+    border-radius: 99px;
+    height: 8px;
+    margin: 16px 0;
+  }
+  .progress-bar {
+    height: 8px;
+    border-radius: 99px;
+    background: var(--primary);
+    transition: width 0.4s;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: var(--text-sub);
+    margin-bottom: 4px;
+  }
+
+  /* 問題カード */
+  .question-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    margin-bottom: 16px;
+  }
+  .q-meta {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .q-badge {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-weight: 600;
+  }
+  .badge-cat { background: #dbeafe; color: #1d4ed8; }
+  .badge-diff-easy { background: #dcfce7; color: #15803d; }
+  .badge-diff-mid { background: #fef9c3; color: #854d0e; }
+  .badge-diff-hard { background: #fee2e2; color: #b91c1c; }
+  .q-text { font-size: 1.05rem; font-weight: 600; margin-bottom: 20px; }
+  .choices { display: flex; flex-direction: column; gap: 10px; }
+  .choice-btn {
+    background: #f8fafc;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    padding: 12px 16px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .choice-btn:hover:not(:disabled) { border-color: var(--primary); background: #eff6ff; }
+  .choice-btn .choice-num {
+    min-width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-sub);
+    margin-top: 1px;
+  }
+  .choice-btn.correct { border-color: var(--success); background: #f0fdf4; }
+  .choice-btn.correct .choice-num { background: var(--success); color: white; }
+  .choice-btn.wrong { border-color: var(--danger); background: #fef2f2; }
+  .choice-btn.wrong .choice-num { background: var(--danger); color: white; }
+  .choice-btn:disabled { cursor: default; }
+
+  /* 解説 */
+  .explanation {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    border-left: 4px solid;
+    display: none;
+  }
+  .explanation.correct { border-color: var(--success); background: #f0fdf4; }
+  .explanation.wrong { border-color: var(--danger); background: #fef2f2; }
+  .explanation .result-icon { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+  .explanation .exp-body { color: var(--text); }
+
+  .nav-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* 結果画面 */
+  #result-screen { text-align: center; padding: 20px 0; }
+  .score-circle {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 8px solid var(--primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 20px auto;
+  }
+  .score-circle .score-num { font-size: 2.4rem; font-weight: 800; color: var(--primary); line-height: 1; }
+  .score-circle .score-label { font-size: 0.8rem; color: var(--text-sub); }
+  .score-msg { font-size: 1.1rem; font-weight: 600; margin: 8px 0 20px; }
+  .result-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+  .result-table th { background: #f1f5f9; padding: 8px; text-align: center; border: 1px solid var(--border); }
+  .result-table td { padding: 8px 10px; border: 1px solid var(--border); }
+  .result-table tr.wrong-row td { background: #fff5f5; }
+  .result-table tr.correct-row td { background: #f0fdf4; }
+  .icon-o { color: var(--success); font-weight: 700; }
+  .icon-x { color: var(--danger); font-weight: 700; }
+
+  @media (max-width: 500px) {
+    header h1 { font-size: 1.2rem; }
+    .question-card { padding: 16px; }
+    .q-text { font-size: 0.97rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>胃X線バリウム検査 国試対策問題集</h1>
+  <p>診療放射線技師 国家試験対応｜全30問</p>
+</header>
+
+<div class="container">
+
+  <!-- トップ画面 -->
+  <div id="start-screen">
+    <h2>分野を選んで学習しよう</h2>
+    <p>全分野 or 苦手分野だけを集中的に練習できます</p>
+    <div class="category-grid" id="cat-grid"></div>
+    <button class="btn btn-primary" id="start-btn" onclick="startQuiz()">学習を開始する</button>
+  </div>
+
+  <!-- 問題画面 -->
+  <div id="quiz-screen" style="display:none;">
+    <div class="progress-label">
+      <span id="q-label">問題 1 / 30</span>
+      <span id="score-label">正解: 0</span>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="prog-bar"></div></div>
+    <div id="question-area"></div>
+    <div class="nav-row">
+      <button class="btn btn-outline" onclick="quitQuiz()">終了する</button>
+      <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()" style="display:none;">次の問題へ →</button>
+    </div>
+  </div>
+
+  <!-- 結果画面 -->
+  <div id="result-screen" style="display:none;">
+    <h2>結果発表</h2>
+    <div class="score-circle">
+      <span class="score-num" id="final-score"></span>
+      <span class="score-label">点</span>
+    </div>
+    <div class="score-msg" id="score-msg"></div>
+    <table class="result-table" id="result-table">
+      <thead><tr><th>#</th><th>問題（概要）</th><th>結果</th></tr></thead>
+      <tbody id="result-tbody"></tbody>
+    </table>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+      <button class="btn btn-primary" onclick="retryWrong()">間違えた問題だけやり直す</button>
+      <button class="btn btn-outline" onclick="resetAll()">トップに戻る</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ALL_QUESTIONS = [
+  // ===== カテゴリ: 検査手順・前処置 =====
+  {
+    id: 1, cat: "検査手順・前処置", diff: "easy",
+    q: "上部消化管X線造影検査（胃透視）における前処置として正しいのはどれか。",
+    choices: ["検査前日から軽食にする","検査当日は水分補給のみ可能","検査前6〜8時間の絶食が必要","前処置は不要である","検査前日から絶食が必要"],
+    ans: 2,
+    exp: "上部消化管造影は通常、検査当日の朝食を絶食（6〜8時間絶食）として行う。水分も原則禁止。検査前日からの絶食は過剰であり不要。"
+  },
+  {
+    id: 2, cat: "検査手順・前処置", diff: "easy",
+    q: "胃X線検査で使用される硫酸バリウム製剤の特徴として誤っているのはどれか。",
+    choices: ["水に不溶性である","消化管から吸収されない","消化管穿孔が疑われる場合でも使用できる","白色不透明な懸濁液である","造影剤として胃粘膜の描出に使用される"],
+    ans: 2,
+    exp: "硫酸バリウムは消化管穿孔が疑われる場合は禁忌である。穿孔があると腹腔内に漏出し、腹膜炎を起こす危険がある。穿孔疑いの場合は水溶性造影剤（ガストログラフィンなど）を使用する。"
+  },
+  {
+    id: 3, cat: "検査手順・前処置", diff: "mid",
+    q: "胃二重造影に用いる発泡剤の目的として正しいのはどれか。",
+    choices: ["バリウムを希釈する","胃内に炭酸ガスを発生させ胃を膨張させる","蠕動運動を促進する","胃酸を中和する","幽門を弛緩させる"],
+    ans: 1,
+    exp: "発泡剤（クエン酸+重曹など）は胃内で炭酸ガスを発生させ、胃壁を伸展させる。バリウムと空気の二重造影像（二重造影）を得るために欠かせない。"
+  },
+  {
+    id: 4, cat: "検査手順・前処置", diff: "mid",
+    q: "胃X線検査で使用する低緊張薬（鎮痙薬）の主な目的はどれか。",
+    choices: ["胃酸分泌を抑制する","蠕動運動・胃の緊張を低下させ観察しやすくする","バリウムの粘度を下げる","患者の不安を軽減する","胃内ガスを増加させる"],
+    ans: 1,
+    exp: "グルカゴンや塩酸ブチルスコポラミン（ブスコパン）などの低緊張薬は、胃の蠕動を抑制し、胃壁の緊張を低下させることで良好な二重造影像を得るために使用される。"
+  },
+  {
+    id: 5, cat: "検査手順・前処置", diff: "hard",
+    q: "ブスコパン（塩酸ブチルスコポラミン）が禁忌となる疾患はどれか。",
+    choices: ["胃炎","逆流性食道炎","緑内障","十二指腸潰瘍","慢性胃炎"],
+    ans: 2,
+    exp: "塩酸ブチルスコポラミンは抗コリン薬であり、緑内障（眼圧上昇）・前立腺肥大・心疾患などは禁忌または慎重投与。また心拍数増加の副作用もある。"
+  },
+
+  // ===== カテゴリ: 造影剤 =====
+  {
+    id: 6, cat: "造影剤", diff: "easy",
+    q: "胃X線検査で使用する硫酸バリウムの濃度として二重造影法に適しているのはどれか。",
+    choices: ["20〜30 w/v%","50〜80 w/v%","100〜200 w/v%","200〜250 w/v%","300 w/v%以上"],
+    ans: 3,
+    exp: "二重造影法では、胃粘膜面に薄く付着させるために高濃度（150〜250 w/v%程度）のバリウムを用いる。充盈法では低濃度（50〜100 w/v%）を用いる場合もある。"
+  },
+  {
+    id: 7, cat: "造影剤", diff: "mid",
+    q: "消化管穿孔が疑われる場合に使用すべき造影剤はどれか。",
+    choices: ["硫酸バリウム（高濃度）","硫酸バリウム（低濃度）","ガストログラフィン（水溶性ヨード造影剤）","ガドリニウム製剤","空気"],
+    ans: 2,
+    exp: "消化管穿孔疑いでは硫酸バリウムは禁忌。水溶性ヨード造影剤（ガストログラフィンなど）は体内に漏出しても吸収・排泄されるため安全に使用できる。"
+  },
+  {
+    id: 8, cat: "造影剤", diff: "mid",
+    q: "二重造影法における「透見像」の説明として正しいのはどれか。",
+    choices: ["バリウムが充満した状態の像","粘膜面にバリウムが薄く付着し空気で背景が黒い像","バリウムと空気の界面が見える横断面像","粘膜ひだをバリウムが流れ落ちる像","粘膜面に陥凹があり白く描出される像"],
+    ans: 1,
+    exp: "透見像（二重造影像）は、薄いバリウムが粘膜面を覆い、後方の空気（ガス）が透けて見える状態。粘膜の細かな凹凸（胃小区）が描出される。"
+  },
+
+  // ===== カテゴリ: 撮影体位 =====
+  {
+    id: 9, cat: "撮影体位", diff: "easy",
+    q: "胃透視における第二斜位（RAO：右前斜位）について正しいのはどれか。",
+    choices: ["患者の左前面が台に接する","胃体部後壁の二重造影に適している","幽門部・十二指腸球部の観察に適している","噴門部の観察に最も適している","腹臥位に近い体位である"],
+    ans: 2,
+    exp: "RAO（右前斜位）では幽門部・前庭部・十二指腸球部が展開してよく観察できる。胃体部後壁はLAO（左前斜位）や背臥位が適する。"
+  },
+  {
+    id: 10, cat: "撮影体位", diff: "easy",
+    q: "胃体部後壁の二重造影を得るために適した体位はどれか。",
+    choices: ["腹臥位","右前斜位（RAO）","背臥位","立位","左側臥位"],
+    ans: 2,
+    exp: "背臥位（仰向け）では重力によりバリウムが後壁側に流れず、胃体後壁が空気で覆われ、二重造影が得られやすい。"
+  },
+  {
+    id: 11, cat: "撮影体位", diff: "mid",
+    q: "噴門部（食道胃接合部）の観察に適した体位はどれか。",
+    choices: ["立位正面","腹臥位","右前斜位（RAO）","左後斜位（LPO）または背臥位頭低位","腹臥位頭高位"],
+    ans: 3,
+    exp: "噴門部は胃の左上部（解剖学的に左高位）にあり、LPO（左後斜位）や背臥位頭低位でバリウムが流れ込み、二重造影像が得られやすい。"
+  },
+  {
+    id: 12, cat: "撮影体位", diff: "mid",
+    q: "十二指腸球部の観察に最も適した体位はどれか。",
+    choices: ["背臥位","右前斜位（RAO）","左前斜位（LAO）","腹臥位","立位左側面"],
+    ans: 1,
+    exp: "RAO（右前斜位）では幽門から十二指腸球部にかけてが展開し、バリウムが流入しやすいため十二指腸球部の観察に適している。"
+  },
+  {
+    id: 13, cat: "撮影体位", diff: "mid",
+    q: "胃前壁の二重造影を得るために適した体位はどれか。",
+    choices: ["背臥位","腹臥位","右前斜位（RAO）","左後斜位（LPO）","立位正面"],
+    ans: 1,
+    exp: "腹臥位では重力によりバリウムが前壁から流れ、前壁面に薄いバリウムが残り空気で覆われるため、前壁の二重造影が得られる。"
+  },
+  {
+    id: 14, cat: "撮影体位", diff: "hard",
+    q: "幽門前庭部小彎側の観察に適した体位と照射方向の組み合わせとして正しいのはどれか。",
+    choices: ["背臥位・頭方向入射","右前斜位（RAO）・尾方向入射","腹臥位・正面入射","立位・右側面入射","右前斜位（RAO）・頭方向入射（半立位RAO）"],
+    ans: 4,
+    exp: "半立位RAO（ハーフ立位右前斜位）は幽門前庭部から十二指腸球部を展開して描出するのに優れた体位。X線を頭方向にやや傾けることで重なりを避ける。"
+  },
+
+  // ===== カテゴリ: 二重造影の原理 =====
+  {
+    id: 15, cat: "二重造影の原理", diff: "easy",
+    q: "二重造影法の原理として正しい説明はどれか。",
+    choices: ["バリウムを大量に飲んで胃を充満させる","バリウムと空気（ガス）の2種類の造影剤を用いて粘膜面を描出する","2種類のヨード造影剤を混合して用いる","CTとX線の二重撮影を行う","バリウムと水を交互に飲む"],
+    ans: 1,
+    exp: "二重造影法はバリウム（陽性造影剤）と空気・炭酸ガス（陰性造影剤）を組み合わせ、粘膜面に薄くバリウムをコーティングして粘膜の細かな構造を描出する方法。"
+  },
+  {
+    id: 16, cat: "二重造影の原理", diff: "mid",
+    q: "充盈法と比較した二重造影法の利点として正しいのはどれか。",
+    choices: ["被ばく線量が少ない","粘膜面の微細な変化を検出できる","検査時間が短い","造影剤の使用量が少ない","患者の苦痛が少ない"],
+    ans: 1,
+    exp: "二重造影法は粘膜面にバリウムを薄くコーティングし、胃小区・陥凹・隆起など微細な粘膜変化の描出に優れる。充盈法はポリープや潰瘍のニッシェ（陥凹）の輪郭描出には有利。"
+  },
+  {
+    id: 17, cat: "二重造影の原理", diff: "mid",
+    q: "胃透視における「充盈像」の説明として正しいのはどれか。",
+    choices: ["胃内にバリウムが充満した状態の像","粘膜面に薄くバリウムが付着した像","空気のみで胃が膨らんだ状態の像","バリウムと空気の界面で生じる縁どり像","蠕動運動によって生じた像"],
+    ans: 0,
+    exp: "充盈像はバリウムが胃腔を充満した状態で撮影した像。胃の輪郭（シルエット）や大きな病変の形態把握に有用だが、粘膜の細かな変化は見えにくい。"
+  },
+
+  // ===== カテゴリ: 読影・疾患所見 =====
+  {
+    id: 18, cat: "読影・疾患所見", diff: "easy",
+    q: "胃潰瘍のX線像における「ニッシェ（niche）」とは何か。",
+    choices: ["粘膜面の隆起所見","潰瘍底にバリウムが充填された陥凹の造影像","胃壁の肥厚像","粘膜ひだの集中像","胃の蠕動亢進像"],
+    ans: 1,
+    exp: "ニッシェ（niche）は潰瘍の陥凹にバリウムが充填されて白く突出して見える像（正面像では白い点、側面像では胃壁外側に突出した白い陰影）。胃潰瘍の代表的なX線所見。"
+  },
+  {
+    id: 19, cat: "読影・疾患所見", diff: "mid",
+    q: "胃潰瘍の良性を示唆するX線所見はどれか。",
+    choices: ["辺縁不整なニッシェ","ニッシェ周囲の粘膜ひだの集中（放射状集中）","硬化したひだの途絶","胃壁の硬化（ペリスタルシスの消失）","スキルスに類似した革袋状胃"],
+    ans: 1,
+    exp: "良性潰瘍では粘膜ひだが滑らかにニッシェに向かって集中（放射状集中）する。悪性では辺縁不整・ひだの途絶・壁の硬化などを伴うことが多い。"
+  },
+  {
+    id: 20, cat: "読影・疾患所見", diff: "mid",
+    q: "進行胃癌（Borrmann分類）のタイプで「浸潤型（革袋状胃）」を示すのはどれか。",
+    choices: ["Borrmann I型","Borrmann II型","Borrmann III型","Borrmann IV型","Borrmann V型"],
+    ans: 3,
+    exp: "Borrmann IV型は癌が胃壁全体に広がり胃全体が硬くなる「革袋状胃（linitis plastica）」。X線では胃の変形・蠕動消失・胃壁の硬化像が見られる。予後不良な型。"
+  },
+  {
+    id: 21, cat: "読影・疾患所見", diff: "mid",
+    q: "早期胃癌の肉眼分類（0型）のうち、陥凹型を示すのはどれか。",
+    choices: ["0-I型","0-IIa型","0-IIb型","0-IIc型","0-III型よりも隆起が高い"],
+    ans: 3,
+    exp: "0-IIc型は浅い陥凹を示す早期胃癌で最も頻度が高い。0-I型は隆起型、0-IIa型は表面隆起型、0-IIb型は表面平坦型、0-III型は深い陥凹（潰瘍形成）型。"
+  },
+  {
+    id: 22, cat: "読影・疾患所見", diff: "hard",
+    q: "胃ポリープのX線所見として正しいのはどれか。",
+    choices: ["充盈像で透亮像（バリウムが欠損した陰影欠損）として描出される","ニッシェとして描出される","胃壁の陥凹として描出される","透見像では白く描出される","蠕動波の消失として描出される"],
+    ans: 0,
+    exp: "ポリープは充盈像では胃腔内にバリウムが欠損した透亮像（陰影欠損）として描出される。透見像（二重造影）では空気に囲まれた白い隆起として描出される。"
+  },
+
+  // ===== カテゴリ: 防護・被ばく =====
+  {
+    id: 23, cat: "防護・被ばく", diff: "easy",
+    q: "胃透視における患者の被ばく低減策として正しいのはどれか。",
+    choices: ["透視時間を長くして詳細に観察する","パルス透視を使用して透視時間を短縮する","管電圧を低くして画像コントラストを上げる","撮影枚数を増やして撮り直しを避ける","フィルタを取り外して線量を増やす"],
+    ans: 1,
+    exp: "パルス透視（間欠透視）は連続透視に比べて被ばく線量を大幅に低減できる。透視時間の短縮、照射野の絞り込み（コリメーション）も重要な低減策。"
+  },
+  {
+    id: 24, cat: "防護・被ばく", diff: "mid",
+    q: "胃透視において患者の被ばく線量が増加する要因はどれか。",
+    choices: ["照射野を絞る","パルス透視を使用する","患者の体厚が大きい","管電圧を高くする","FPD（フラットパネル）を使用する"],
+    ans: 2,
+    exp: "患者体厚が大きいと透過に必要なX線量が増加し、患者被ばく線量が増大する。照射野絞り込み・パルス透視・高管電圧・FPD使用はいずれも被ばく低減に寄与する。"
+  },
+  {
+    id: 25, cat: "防護・被ばく", diff: "mid",
+    q: "消化管透視に従事する診療放射線技師の防護として適切でないのはどれか。",
+    choices: ["鉛エプロンを着用する","透視中は患者から可能な限り距離をとる","透視中はX線管球に近い位置に立つ","甲状腺プロテクターを着用する","防護眼鏡を使用する"],
+    ans: 2,
+    exp: "散乱線はX線管球から最も多く発生するため、管球側（照射側）に立つと被ばくが増大する。距離の二乗に反比例して線量は低下するので、できるだけ距離をとる。"
+  },
+
+  // ===== カテゴリ: 装置・画像 =====
+  {
+    id: 26, cat: "装置・画像", diff: "easy",
+    q: "胃透視装置において、画像増倍管（I.I.）に代わり現在主流となっている検出器はどれか。",
+    choices: ["CR（輝尽性蛍光板）","DR（フラットパネル検出器：FPD）","フィルム−増感紙系","シンチレーター","CCD"],
+    ans: 1,
+    exp: "FPD（Flat Panel Detector）は現在の透視装置の主流。I.I.に比べ歪みが少なく、ダイナミックレンジが広く、被ばく線量も低い。"
+  },
+  {
+    id: 27, cat: "装置・画像", diff: "mid",
+    q: "デジタル透視における「ラストイメージホールド（Last Image Hold）」の説明として正しいのはどれか。",
+    choices: ["透視を続けながら最後の画像だけを保存する機能","透視終了直前の静止画を表示し続ける機能（追加被ばくなし）","自動的に透視を停止する安全機能","最終フレームのノイズを除去する処理","透視画像を動画として自動保存する機能"],
+    ans: 1,
+    exp: "ラストイメージホールドは透視を停止した後、最後のフレームを静止画としてモニタに表示し続ける機能。追加被ばくなしに術者が画像を確認できるため、被ばく低減に有効。"
+  },
+  {
+    id: 28, cat: "装置・画像", diff: "mid",
+    q: "透視装置のSID（線源-画像受像器間距離）を長くした場合の変化として正しいのはどれか。",
+    choices: ["被写体倍率が増大する","散乱線の割合が増加する","入射表面線量が増加する","幾何学的不鋭が減少する","空間分解能が低下する"],
+    ans: 3,
+    exp: "SIDを長くすると焦点-被写体間距離も相対的に長くなり、幾何学的不鋭（ぼけ）が減少する。入射表面線量は距離の二乗に反比例して減少する。"
+  },
+
+  // ===== カテゴリ: 食道・総合 =====
+  {
+    id: 29, cat: "食道・総合", diff: "mid",
+    q: "食道静脈瘤のX線所見として正しいのはどれか。",
+    choices: ["食道壁の硬化像","粘膜ひだの縦走する蛇行・珠状の陰影欠損","ニッシェ形成","食道の短縮","充盈像での白い隆起"],
+    ans: 1,
+    exp: "食道静脈瘤は充盈像や透見像で粘膜ひだが縦走方向に蛇行・念珠状（数珠状）の陰影欠損として描出される。門脈圧亢進症（肝硬変など）の重要な所見。"
+  },
+  {
+    id: 30, cat: "食道・総合", diff: "hard",
+    q: "胃X線検査における「アレルギー反応」の起こりうる薬剤と対応の組み合わせとして正しいのはどれか。",
+    choices: [
+      "硫酸バリウム－アドレナリン投与",
+      "グルカゴン－アナフィラキシーショック対応が必要",
+      "ブスコパン（塩酸ブチルスコポラミン）－緑内障への対応のみ",
+      "発泡剤－アレルギーは起こらない",
+      "硫酸バリウム－誤嚥による肺炎（バリウム肺炎）への対応"
+    ],
+    ans: 4,
+    exp: "硫酸バリウムの誤嚥は重篤なバリウム肺炎（化学性肺炎）を起こす危険がある。高齢者・嚥下障害患者では特に注意が必要。グルカゴンもアレルギーを起こす可能性があるが、最も頻度が高いリスクはバリウム誤嚥。"
+  }
+];
+
+const CATEGORIES = [...new Set(ALL_QUESTIONS.map(q => q.cat))];
+
+let selectedCats = new Set(CATEGORIES);
+let quizQuestions = [];
+let currentIdx = 0;
+let score = 0;
+let answered = [];
+let userAnswers = [];
+
+// カテゴリグリッド描画
+function renderCatGrid() {
+  const grid = document.getElementById('cat-grid');
+  grid.innerHTML = '';
+  // 全選択カード
+  const allCard = document.createElement('div');
+  allCard.className = 'category-card selected';
+  allCard.id = 'cat-all';
+  allCard.innerHTML = `<div class="cat-icon">📋</div><div class="cat-name">全分野</div><div class="cat-count">全30問</div>`;
+  allCard.onclick = () => toggleAll(allCard);
+  grid.appendChild(allCard);
+
+  CATEGORIES.forEach(cat => {
+    const cnt = ALL_QUESTIONS.filter(q => q.cat === cat).length;
+    const icons = {"検査手順・前処置":"🧪","造影剤":"💉","撮影体位":"🛏️","二重造影の原理":"🔬","読影・疾患所見":"🔍","防護・被ばく":"☢️","装置・画像":"📡","食道・総合":"🫁"};
+    const card = document.createElement('div');
+    card.className = 'category-card selected';
+    card.dataset.cat = cat;
+    card.innerHTML = `<div class="cat-icon">${icons[cat]||'📌'}</div><div class="cat-name">${cat}</div><div class="cat-count">${cnt}問</div>`;
+    card.onclick = () => toggleCat(card, cat);
+    grid.appendChild(card);
+  });
+}
+
+function toggleAll(allCard) {
+  const allSelected = selectedCats.size === CATEGORIES.length;
+  if (allSelected) {
+    selectedCats.clear();
+    document.querySelectorAll('[data-cat]').forEach(c => c.classList.remove('selected'));
+    allCard.classList.remove('selected');
+  } else {
+    CATEGORIES.forEach(c => selectedCats.add(c));
+    document.querySelectorAll('[data-cat]').forEach(c => c.classList.add('selected'));
+    allCard.classList.add('selected');
+  }
+}
+
+function toggleCat(card, cat) {
+  if (selectedCats.has(cat)) { selectedCats.delete(cat); card.classList.remove('selected'); }
+  else { selectedCats.add(cat); card.classList.add('selected'); }
+  const allCard = document.getElementById('cat-all');
+  if (selectedCats.size === CATEGORIES.length) allCard.classList.add('selected');
+  else allCard.classList.remove('selected');
+}
+
+function startQuiz(forceQuestions) {
+  quizQuestions = forceQuestions || ALL_QUESTIONS.filter(q => selectedCats.has(q.cat));
+  if (quizQuestions.length === 0) { alert('問題が0問です。分野を選択してください。'); return; }
+  // シャッフル
+  quizQuestions = [...quizQuestions].sort(() => Math.random() - 0.5);
+  currentIdx = 0; score = 0; answered = []; userAnswers = [];
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = quizQuestions[currentIdx];
+  const total = quizQuestions.length;
+  document.getElementById('q-label').textContent = `問題 ${currentIdx+1} / ${total}`;
+  document.getElementById('score-label').textContent = `正解: ${score}`;
+  document.getElementById('prog-bar').style.width = `${((currentIdx)/total)*100}%`;
+  document.getElementById('next-btn').style.display = 'none';
+
+  const diffLabel = {easy:'基礎',mid:'標準',hard:'応用'};
+  const diffClass = {easy:'badge-diff-easy',mid:'badge-diff-mid',hard:'badge-diff-hard'};
+
+  let choicesHtml = q.choices.map((c, i) =>
+    `<button class="choice-btn" id="ch${i}" onclick="selectAnswer(${i})">
+      <span class="choice-num">${i+1}</span><span>${c}</span>
+    </button>`
+  ).join('');
+
+  document.getElementById('question-area').innerHTML = `
+    <div class="question-card">
+      <div class="q-meta">
+        <span class="q-badge badge-cat">${q.cat}</span>
+        <span class="q-badge ${diffClass[q.diff]}">${diffLabel[q.diff]}</span>
+      </div>
+      <div class="q-text">問${currentIdx+1}. ${q.q}</div>
+      <div class="choices">${choicesHtml}</div>
+      <div class="explanation" id="explanation"></div>
+    </div>`;
+}
+
+function selectAnswer(idx) {
+  const q = quizQuestions[currentIdx];
+  const correct = q.ans;
+  const isCorrect = idx === correct;
+  if (isCorrect) score++;
+  answered[currentIdx] = isCorrect;
+  userAnswers[currentIdx] = idx;
+
+  // ボタン無効化・色付け
+  q.choices.forEach((_, i) => {
+    const btn = document.getElementById(`ch${i}`);
+    btn.disabled = true;
+    if (i === correct) btn.classList.add('correct');
+    if (i === idx && !isCorrect) btn.classList.add('wrong');
+  });
+
+  // 解説表示
+  const expDiv = document.getElementById('explanation');
+  expDiv.style.display = 'block';
+  expDiv.className = `explanation ${isCorrect ? 'correct' : 'wrong'}`;
+  expDiv.innerHTML = `<div class="result-icon">${isCorrect ? '⭕ 正解！' : '✖ 不正解'}</div><div class="exp-body"><strong>解説：</strong>${q.exp}</div>`;
+
+  document.getElementById('score-label').textContent = `正解: ${score}`;
+  document.getElementById('next-btn').style.display = 'inline-block';
+  document.getElementById('next-btn').textContent = currentIdx + 1 < quizQuestions.length ? '次の問題へ →' : '結果を見る';
+}
+
+function nextQuestion() {
+  currentIdx++;
+  if (currentIdx < quizQuestions.length) renderQuestion();
+  else showResult();
+}
+
+function showResult() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+  const total = quizQuestions.length;
+  const pct = Math.round((score/total)*100);
+  document.getElementById('final-score').textContent = pct;
+  const msgs = [
+    [90,'合格ライン突破！すばらしい実力です！'],
+    [70,'もう少し！苦手分野を復習しましょう'],
+    [0,'基礎から復習しましょう。一歩ずつ！']
+  ];
+  document.getElementById('score-msg').textContent = `${score} / ${total} 問正解（${pct}点）　` + msgs.find(([t]) => pct >= t)[1];
+
+  const tbody = document.getElementById('result-tbody');
+  tbody.innerHTML = quizQuestions.map((q, i) => {
+    const ok = answered[i];
+    return `<tr class="${ok?'correct-row':'wrong-row'}">
+      <td style="text-align:center">${i+1}</td>
+      <td>${q.q.length>30 ? q.q.slice(0,30)+'…' : q.q}</td>
+      <td style="text-align:center">${ok ? '<span class="icon-o">○</span>' : '<span class="icon-x">✗</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function retryWrong() {
+  const wrong = quizQuestions.filter((_, i) => !answered[i]);
+  if (wrong.length === 0) { alert('全問正解です！'); return; }
+  startQuiz(wrong);
+}
+
+function quitQuiz() {
+  if (confirm('終了しますか？')) { resetAll(); }
+}
+
+function resetAll() {
+  selectedCats = new Set(CATEGORIES);
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'block';
+  renderCatGrid();
+}
+
+renderCatGrid();
+</script>
+</body>
+</html>
