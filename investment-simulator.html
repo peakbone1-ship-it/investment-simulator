@@ -250,6 +250,22 @@ select option{background:#161b22}
         <input type="number" id="duration" value="30" min="1" max="100">
       </div>
 
+      <!-- ── NISA・インフレ設定 ── -->
+      <hr class="section-sep">
+      <div class="section-label">🏦 NISA・インフレ設定（オプション）</div>
+
+      <label class="toggle-row" for="nisaToggle" style="background:rgba(63,185,80,0.08);border-color:rgba(63,185,80,0.25)">
+        <input type="checkbox" id="nisaToggle" style="accent-color:#3fb950">
+        <span style="color:#3fb950">新NISA枠を考慮する</span>
+      </label>
+      <div class="hint" style="margin-top:-8px;margin-bottom:14px">年間360万円・生涯1,800万円を超える投資分は課税口座扱いとなり、取り崩し時に譲渡益へ20.315%課税されます。取り崩しは課税口座を優先。売却分のNISA生涯枠は簿価ベースで復活します（年内復活で近似）。</div>
+
+      <div class="form-group">
+        <label>インフレ率（年率・%）</label>
+        <input type="number" id="inflRate" value="0" min="0" max="20" step="0.1">
+        <div class="hint">0より大きくすると、結果に実質価値（現在の貨幣価値換算）を併記します。目安: 日銀目標 2%</div>
+      </div>
+
       <!-- ── 取り崩し設定 ── -->
       <hr class="section-sep">
       <div class="section-label">💸 取り崩し設定（オプション）</div>
@@ -292,6 +308,7 @@ select option{background:#161b22}
         </div>
       </div>
 
+      <div id="errBox" style="display:none;background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.4);border-radius:8px;padding:10px 12px;font-size:0.8rem;color:#f85149;margin-top:10px;line-height:1.6"></div>
       <button class="btn-calc" onclick="calculate()">📊 シミュレーション実行</button>
     </div>
 
@@ -463,10 +480,53 @@ let myChart    = null;
 // INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
   onFundChange();
   renderAllEvents();
   renderReturnsTable();
 });
+
+// ═══════════════════════════════════════════════════════════
+// SETTINGS PERSISTENCE (localStorage)
+// ═══════════════════════════════════════════════════════════
+const LS_KEY = 'investSimSettings';
+const SAVE_IDS = ['fundSelect','lsAmt','mtInitAmt','mtAmt','startYear','duration',
+  'startYear1','startYear2','startYear3','customRate4','startYear4ref',
+  'withdrawStartYear','withdrawEndYear','fixedMonthlyW','rateW','inflRate',
+  'wStart1','wStart2','wStart3','wStart4','wEnd1','wEnd2','wEnd3','wEnd4'];
+const SAVE_CHECKS = ['withdrawToggle','mtChangeToggle','nisaToggle'];
+
+function saveSettings() {
+  const s = { investType, simMode, fields: {}, checks: {}, mtRows: [] };
+  SAVE_IDS.forEach(id => { s.fields[id] = document.getElementById(id).value; });
+  SAVE_CHECKS.forEach(id => { s.checks[id] = document.getElementById(id).checked; });
+  document.querySelectorAll('#mtChangeList .mt-change-row').forEach(row => {
+    s.mtRows.push({ after: row.querySelector('.mc-after').value, amt: row.querySelector('.mc-amt').value });
+  });
+  try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+function findTab(fnName, text) {
+  return [...document.querySelectorAll('.tab')].find(b =>
+    b.onclick && b.onclick.toString().includes(fnName) && b.textContent.includes(text));
+}
+
+function loadSettings() {
+  let s;
+  try { s = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) { return; }
+  if (!s) return;
+  SAVE_IDS.forEach(id => {
+    if (s.fields && s.fields[id] !== undefined) document.getElementById(id).value = s.fields[id];
+  });
+  SAVE_CHECKS.forEach(id => {
+    if (s.checks && s.checks[id] !== undefined) document.getElementById(id).checked = s.checks[id];
+  });
+  (s.mtRows || []).forEach(r => addMtChangeRow(r.after, r.amt));
+  document.getElementById('mtChangeBox').classList.toggle('open', document.getElementById('mtChangeToggle').checked);
+  if (s.investType === 'monthly') { const b = findTab('setType', '積立投資'); if (b) setType('monthly', b); }
+  if (s.simMode === 'compare')    { const b = findTab('setSimMode', '3パターン比較'); if (b) setSimMode('compare', b); }
+  toggleWithdraw();
+}
 
 function onFundChange() {
   const f = FUNDS[document.getElementById('fundSelect').value];
@@ -478,7 +538,9 @@ function onFundChange() {
 
 function setType(type, btn) {
   investType = type;
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => {
+    if (b.onclick && b.onclick.toString().includes('setType')) b.classList.remove('active');
+  });
   btn.classList.add('active');
   document.getElementById('lsGroup').style.display       = type==='lumpsum' ? 'block' : 'none';
   document.getElementById('mtGroup').style.display       = type==='monthly' ? 'block' : 'none';
@@ -547,6 +609,28 @@ function removeMtChangeRow(btn) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// INLINE ERROR
+// ═══════════════════════════════════════════════════════════
+function showError(msg, focusId = null) {
+  const box = document.getElementById('errBox');
+  box.textContent = '⚠️ ' + msg;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (focusId) {
+    const el = document.getElementById(focusId);
+    if (el && el.offsetParent !== null) {
+      el.focus();
+      el.style.borderColor = '#f85149';
+      setTimeout(() => { el.style.borderColor = ''; }, 2500);
+    }
+  }
+}
+
+function clearError() {
+  document.getElementById('errBox').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
 // RETURN LOOKUP (with loop)
 // ═══════════════════════════════════════════════════════════
 function getReturn(fund, year) {
@@ -570,20 +654,41 @@ function fmt(n) {
 // ═══════════════════════════════════════════════════════════
 // SIMULATE (single pattern)
 // ═══════════════════════════════════════════════════════════
-function runSimulation(fund, startYear, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, customRate = null, mtChangePts = []) {
+function runSimulation(fund, startYear, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, customRate = null, mtChangePts = [], nisaEnabled = false, inflRate = 0) {
+  const NISA_ANNUAL = 3600000, NISA_LIFETIME = 18000000, TAX_RATE = 0.20315;
   const initVal = investType === 'lumpsum' ? lsAmt : mtInitAmt;
-  let val = initVal, totalInvested = initVal, totalWithdrawn = 0;
+
+  // NISA口座(N)と課税口座(T)を分離管理。NISA無効時は全額N側・税ゼロで従来と同一挙動
+  let valN = 0, valT = 0, costN = 0, costT = 0;
+  let lifetimeUsed = 0, yearNisaUsed = 0, totalTax = 0;
+
+  const invest = (amount) => {
+    let toN = amount;
+    if (nisaEnabled) {
+      const room = Math.max(0, Math.min(NISA_ANNUAL - yearNisaUsed, NISA_LIFETIME - lifetimeUsed));
+      toN = Math.min(amount, room);
+      lifetimeUsed += toN; yearNisaUsed += toN;
+    }
+    valN += toN; costN += toN;
+    const toT = amount - toN;
+    valT += toT; costT += toT;
+  };
+
+  invest(initVal);
+  let totalInvested = initVal, totalWithdrawn = 0;
   let depletionYear = null, wStartVal = null, wStopVal = null, hasLooped = false;
 
-  const points = [{year: startYear, value: initVal, invested: initVal, withdrawn: 0}];
+  const points = [{year: startYear, value: initVal, real: initVal, invested: initVal, withdrawn: 0}];
 
   for (let i = 0; i < duration; i++) {
     const yr = startYear + i;
+    if (i > 0) yearNisaUsed = 0;
     const isWithdrawing = wEnabled && yr >= wStartYear && yr <= wEndYear;
-    if (wEnabled && yr === wStartYear && wStartVal === null) wStartVal = val;
+    if (wEnabled && yr === wStartYear && wStartVal === null) wStartVal = valN + valT;
+    const defl = Math.pow(1 + inflRate / 100, i + 1);
 
     if (depletionYear !== null) {
-      points.push({year: yr+1, value: 0, invested: totalInvested, withdrawn: totalWithdrawn});
+      points.push({year: yr+1, value: 0, real: 0, invested: totalInvested, withdrawn: totalWithdrawn});
       continue;
     }
 
@@ -600,29 +705,73 @@ function runSimulation(fund, startYear, duration, wEnabled, wStartYear, wEndYear
     for (const pt of mtChangePts) { if (i >= pt.after) effectiveMtAmt = pt.amount; }
 
     for (let m = 0; m < 12; m++) {
-      if (!isWithdrawing && investType === 'monthly') { val += effectiveMtAmt; totalInvested += effectiveMtAmt; }
-      val *= (1 + mRet);
+      if (!isWithdrawing && investType === 'monthly') { invest(effectiveMtAmt); totalInvested += effectiveMtAmt; }
+      valN *= (1 + mRet); valT *= (1 + mRet);
       if (isWithdrawing) {
-        const w = Math.min(fixedMonthlyW + val * (rateAnnualW / 100 / 12), Math.max(0, val));
-        val -= w; totalWithdrawn += w;
-        if (val < 1) { val = 0; depletionYear = yr; break; }
+        const total = valN + valT;
+        const w = Math.min(fixedMonthlyW + total * (rateAnnualW / 100 / 12), Math.max(0, total));
+        // 課税口座から優先的に取り崩し（税効率の一般的な戦略）
+        const wT = Math.min(w, valT);
+        if (wT > 0) {
+          const gainRatio = Math.max(0, valT - costT) / valT;
+          totalTax += wT * gainRatio * TAX_RATE;
+          costT -= wT * (costT / valT);
+          valT -= wT;
+        }
+        const wN = w - wT;
+        if (wN > 0 && valN > 0) {
+          const costOut = wN * (costN / valN);
+          costN -= costOut; valN -= wN;
+          lifetimeUsed = Math.max(0, lifetimeUsed - costOut); // 売却簿価分の生涯枠復活（年内復活で近似）
+        }
+        totalWithdrawn += w;
+        if (valN + valT < 1) { valN = 0; valT = 0; depletionYear = yr; break; }
       }
     }
-    if (wEnabled && wEndYear !== Infinity && yr === wEndYear && !depletionYear) wStopVal = Math.max(0, val);
-    points.push({year: yr+1, value: Math.max(0, val), invested: totalInvested, withdrawn: totalWithdrawn});
+    if (wEnabled && wEndYear !== Infinity && yr === wEndYear && !depletionYear) wStopVal = Math.max(0, valN + valT);
+    const v = Math.max(0, valN + valT);
+    points.push({year: yr+1, value: v, real: v / defl, invested: totalInvested, withdrawn: totalWithdrawn});
   }
 
-  const finalVal    = points[points.length-1].value;
-  const totalReturn = finalVal + totalWithdrawn;
-  const profit      = finalVal - totalInvested;
-  const cagr        = totalInvested > 0 ? (Math.pow(totalReturn / totalInvested, 1/duration) - 1) * 100 : 0;
-  return { startYear, endYear: startYear + duration - 1, points, totalInvested, totalWithdrawn, finalVal, profit, totalReturn, cagr, depletionYear, wStartVal, wStopVal, hasLooped };
+  const finalVal      = points[points.length-1].value;
+  const realFinalVal  = points[points.length-1].real;
+  const totalReturn   = finalVal + totalWithdrawn - totalTax;
+  const profit        = finalVal - totalInvested;
+
+  // IRR（内部収益率）: 積立の時間分散を反映した正確な年平均リターン。求解不能時は従来式にフォールバック
+  const cfs = points.map((p, t) => {
+    const prev = t > 0 ? points[t-1] : { invested: 0, withdrawn: 0 };
+    let cf = -(p.invested - prev.invested) + (p.withdrawn - prev.withdrawn);
+    if (t === points.length - 1) cf += p.value - totalTax;
+    return cf;
+  });
+  const irrVal = solveIRR(cfs);
+  const cagr = irrVal !== null ? irrVal
+    : (totalInvested > 0 ? (Math.pow(Math.max(totalReturn, 0) / totalInvested, 1/duration) - 1) * 100 : 0);
+
+  return { startYear, endYear: startYear + duration - 1, points, totalInvested, totalWithdrawn, finalVal, profit, totalReturn, cagr, depletionYear, wStartVal, wStopVal, hasLooped,
+           nisaEnabled, inflRate, finalValN: valN, finalValT: valT, totalTax, lifetimeUsed, realFinalVal };
+}
+
+// 二分法でIRR（年率）を求める。解が存在しない場合は null
+function solveIRR(cfs) {
+  if (!cfs.some(c => c < 0) || !cfs.some(c => c > 0)) return null;
+  const npv = r => cfs.reduce((s, cf, t) => s + cf / Math.pow(1 + r, t), 0);
+  let lo = -0.9999, hi = 10;
+  if (npv(lo) * npv(hi) > 0) return null;
+  for (let k = 0; k < 200; k++) {
+    const mid = (lo + hi) / 2;
+    if (npv(lo) * npv(mid) <= 0) hi = mid; else lo = mid;
+  }
+  return ((lo + hi) / 2) * 100;
 }
 
 // ═══════════════════════════════════════════════════════════
 // CALCULATE  (3 patterns)
 // ═══════════════════════════════════════════════════════════
 function calculate() {
+  clearError();
+  saveSettings();
   simMode === 'single' ? calculateSingle() : calculateCompare();
 }
 
@@ -630,7 +779,7 @@ function calculate() {
 function readCommonSettings() {
   const fund     = FUNDS[document.getElementById('fundSelect').value];
   const duration = parseInt(document.getElementById('duration').value);
-  if (!duration || duration < 1) { alert('運用期間を正しく入力してください'); return null; }
+  if (!duration || duration < 1) { showError('運用期間を正しく入力してください', 'duration'); return null; }
 
   const wEnabled      = document.getElementById('withdrawToggle').checked;
   const wStartYear    = wEnabled ? parseInt(document.getElementById('withdrawStartYear').value) : Infinity;
@@ -640,33 +789,39 @@ function readCommonSettings() {
   const rateAnnualW   = wEnabled ? (parseFloat(document.getElementById('rateW').value) || 0) : 0;
 
   if (wEnabled) {
-    if (isNaN(wStartYear)) { alert('取り崩し開始年を入力してください'); return null; }
-    if (wEndYear !== Infinity && wEndYear <= wStartYear) { alert('取り崩し停止年は開始年より後に設定してください'); return null; }
-    if (fixedMonthlyW === 0 && rateAnnualW === 0) { alert('定額または定率のどちらかを 0 より大きく設定してください'); return null; }
+    // 単発モード用の取り崩し年入力欄は比較モードでは非表示のため、単発モード時のみ検証する
+    if (simMode === 'single') {
+      if (isNaN(wStartYear)) { showError('取り崩し開始年を入力してください', 'withdrawStartYear'); return null; }
+      if (wEndYear !== Infinity && wEndYear <= wStartYear) { showError('取り崩し停止年は開始年より後に設定してください', 'withdrawEndYear'); return null; }
+    }
+    if (fixedMonthlyW === 0 && rateAnnualW === 0) { showError('定額または定率のどちらかを 0 より大きく設定してください', 'fixedMonthlyW'); return null; }
   }
 
   const lsAmt     = parseFloat(document.getElementById('lsAmt').value) || 0;
   const mtAmt     = parseFloat(document.getElementById('mtAmt').value) || 0;
   const mtInitAmt = parseFloat(document.getElementById('mtInitAmt').value) || 0;
-  if (investType === 'lumpsum' && lsAmt <= 0) { alert('投資金額を入力してください'); return null; }
-  if (investType === 'monthly' && mtAmt <= 0)  { alert('積立金額を入力してください'); return null; }
+  if (investType === 'lumpsum' && lsAmt <= 0) { showError('投資金額を入力してください', 'lsAmt'); return null; }
+  if (investType === 'monthly' && mtAmt <= 0)  { showError('積立金額を入力してください', 'mtAmt'); return null; }
 
   const mtChangeEnabled = investType === 'monthly' && document.getElementById('mtChangeToggle').checked;
   let mtChangePts = [];
   if (mtChangeEnabled) {
     const rows = document.querySelectorAll('#mtChangeList .mt-change-row');
-    if (rows.length === 0) { alert('変更ポイントを1つ以上追加してください'); return null; }
+    if (rows.length === 0) { showError('変更ポイントを1つ以上追加してください'); return null; }
     for (const row of rows) {
       const after  = parseInt(row.querySelector('.mc-after').value);
       const amount = parseFloat(row.querySelector('.mc-amt').value);
-      if (isNaN(after) || after < 1) { alert('変更タイミングは1以上の年数で入力してください'); return null; }
-      if (isNaN(amount) || amount < 0) { alert('変更後の積立金額を0以上で入力してください'); return null; }
+      if (isNaN(after) || after < 1) { showError('変更タイミングは1以上の年数で入力してください'); return null; }
+      if (isNaN(amount) || amount < 0) { showError('変更後の積立金額を0以上で入力してください'); return null; }
       mtChangePts.push({ after, amount });
     }
     mtChangePts.sort((a, b) => a.after - b.after);
   }
 
-  return { fund, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, mtChangePts };
+  const nisaEnabled = document.getElementById('nisaToggle').checked;
+  const inflRate    = Math.max(0, parseFloat(document.getElementById('inflRate').value) || 0);
+
+  return { fund, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, mtChangePts, nisaEnabled, inflRate };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -678,9 +833,9 @@ function calculateSingle() {
   const { fund, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt } = s;
 
   const startYear = parseInt(document.getElementById('startYear').value);
-  if (isNaN(startYear)) { alert('投資開始年を入力してください'); return; }
+  if (isNaN(startYear)) { showError('投資開始年を入力してください', 'startYear'); return; }
 
-  const r = runSimulation(fund, startYear, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, null, s.mtChangePts);
+  const r = runSimulation(fund, startYear, duration, wEnabled, wStartYear, wEndYear, fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, null, s.mtChangePts, s.nisaEnabled, s.inflRate);
 
   document.getElementById('placeholder').style.display = 'none';
   document.getElementById('output').style.display = 'flex';
@@ -699,13 +854,23 @@ function calculateSingle() {
 
 function renderSingleCards(r, wEnabled, wStartYear, wEndYear) {
   const ca = document.getElementById('cardsArea');
+  const realSub = r.inflRate > 0 ? `<div class="card-sub yellow">実質 ${fmt(r.realFinalVal)}（インフレ${r.inflRate}%調整後）</div>` : '';
+  const nisaCards = r.nisaEnabled ? `
+        <div class="cards wide">
+          <div class="card"><div class="card-lbl">NISA口座残高（非課税）</div><div class="card-val green">${fmt(r.finalValN)}</div><div class="card-sub">生涯枠使用 ${fmt(r.lifetimeUsed)} / 1,800万円</div></div>
+          <div class="card"><div class="card-lbl">課税口座残高</div><div class="card-val orange">${fmt(r.finalValT)}</div><div class="card-sub">売却時に含み益へ20.315%課税</div></div>
+          <div class="card"><div class="card-lbl">取り崩し時の税額（累計）</div><div class="card-val ${r.totalTax>0?'red':'green'}">${fmt(r.totalTax)}</div></div>
+        </div>` : '';
   if (!wEnabled) {
     ca.innerHTML = `
-      <div class="cards">
-        <div class="card"><div class="card-lbl">投資元本</div><div class="card-val blue">${fmt(r.totalInvested)}</div></div>
-        <div class="card"><div class="card-lbl">最終評価額</div><div class="card-val ${r.profit>=0?'green':'red'}">${fmt(r.finalVal)}</div></div>
-        <div class="card"><div class="card-lbl">損益</div><div class="card-val ${r.profit>=0?'green':'red'}">${r.profit>=0?'+':''}${fmt(r.profit)}</div></div>
-        <div class="card"><div class="card-lbl">年平均リターン (CAGR)</div><div class="card-val ${r.cagr>=0?'green':'red'}">${r.cagr>=0?'+':''}${r.cagr.toFixed(2)}%</div></div>
+      <div class="cards-row">
+        <div class="cards">
+          <div class="card"><div class="card-lbl">投資元本</div><div class="card-val blue">${fmt(r.totalInvested)}</div></div>
+          <div class="card"><div class="card-lbl">最終評価額</div><div class="card-val ${r.profit>=0?'green':'red'}">${fmt(r.finalVal)}</div>${realSub}</div>
+          <div class="card"><div class="card-lbl">損益</div><div class="card-val ${r.profit>=0?'green':'red'}">${r.profit>=0?'+':''}${fmt(r.profit)}</div></div>
+          <div class="card"><div class="card-lbl">年平均リターン (IRR)</div><div class="card-val ${r.cagr>=0?'green':'red'}">${r.cagr>=0?'+':''}${r.cagr.toFixed(2)}%</div></div>
+        </div>
+        ${nisaCards}
       </div>`;
   } else {
     const hasStop = wEndYear !== Infinity && wEndYear <= r.endYear;
@@ -716,13 +881,14 @@ function renderSingleCards(r, wEnabled, wStartYear, wEndYear) {
           <div class="card"><div class="card-lbl">投資元本（累計）</div><div class="card-val blue">${fmt(r.totalInvested)}</div></div>
           <div class="card highlight-w"><div class="card-lbl">取り崩し開始時の残高（${wStartYear}年）</div><div class="card-val purple">${r.wStartVal!=null?fmt(r.wStartVal):'—'}</div></div>
           ${hasStop?`<div class="card highlight-w"><div class="card-lbl">取り崩し停止時の残高（${wEndYear}年末）</div><div class="card-val purple">${r.wStopVal!=null?fmt(r.wStopVal):'—'}</div></div>`:''}
-          <div class="card"><div class="card-lbl">最終残高</div><div class="card-val ${r.finalVal>0?'green':'red'}">${fmt(r.finalVal)}</div></div>
+          <div class="card"><div class="card-lbl">最終残高</div><div class="card-val ${r.finalVal>0?'green':'red'}">${fmt(r.finalVal)}</div>${realSub}</div>
         </div>
         <div class="cards wide">
           <div class="card highlight-w"><div class="card-lbl">総取り崩し額</div><div class="card-val purple">${fmt(r.totalWithdrawn)}</div></div>
-          <div class="card"><div class="card-lbl">受取総額（残高＋取り崩し計）</div><div class="card-val ${r.totalReturn>=r.totalInvested?'green':'red'}">${fmt(r.totalReturn)}</div><div class="card-sub">${r.totalReturn>=r.totalInvested?'+':''}${fmt(r.totalReturn-r.totalInvested)}</div></div>
+          <div class="card"><div class="card-lbl">受取総額（残高＋取り崩し計${r.nisaEnabled?'・税引後':''}）</div><div class="card-val ${r.totalReturn>=r.totalInvested?'green':'red'}">${fmt(r.totalReturn)}</div><div class="card-sub">${r.totalReturn>=r.totalInvested?'+':''}${fmt(r.totalReturn-r.totalInvested)}</div></div>
           <div class="card ${r.depletionYear!==null?'highlight-d':''}"><div class="card-lbl">残高枯渇</div><div class="card-val ${r.depletionYear!==null?'red':'green'}">${depText}</div></div>
         </div>
+        ${nisaCards}
       </div>`;
   }
 }
@@ -736,6 +902,7 @@ function renderSingleChart(fund, r, wEnabled, wStartYear, wEndYear) {
     { label:'投資元本（累計）', data:r.points.map(p=>p.invested), borderColor:'rgba(255,255,255,0.35)', backgroundColor:'rgba(255,255,255,0.03)', fill:true, tension:0, borderDash:[5,5], pointRadius:0, pointHoverRadius:4, borderWidth:1.5 },
   ];
   if (wEnabled) datasets.push({ label:'累計取り崩し額', data:r.points.map(p=>p.withdrawn), borderColor:'#bc8cff', backgroundColor:'rgba(188,140,255,0.07)', fill:true, tension:0.2, borderDash:[3,3], pointRadius:0, pointHoverRadius:4, borderWidth:2 });
+  if (r.inflRate > 0) datasets.push({ label:`実質評価額（インフレ${r.inflRate}%調整後）`, data:r.points.map(p=>p.real), borderColor:'#e3b341', backgroundColor:'transparent', fill:false, tension:0.35, borderDash:[6,4], pointRadius:0, pointHoverRadius:4, borderWidth:1.8 });
 
   const annotations = {};
   EVENTS.filter(e => e.ys <= r.endYear && e.ye >= r.startYear).forEach((ev, i) => {
@@ -783,7 +950,7 @@ function calculateCompare() {
   const startYear1 = parseInt(document.getElementById('startYear1').value);
   const startYear2 = parseInt(document.getElementById('startYear2').value);
   const startYear3 = parseInt(document.getElementById('startYear3').value);
-  if ([startYear1, startYear2, startYear3].some(y => isNaN(y))) { alert('パターン①②③の開始年をすべて入力してください'); return; }
+  if ([startYear1, startYear2, startYear3].some(y => isNaN(y))) { showError('パターン①②③の開始年をすべて入力してください', 'startYear1'); return; }
 
   const customRate4Raw = document.getElementById('customRate4').value.trim();
   const customRate4 = customRate4Raw !== '' ? parseFloat(customRate4Raw) : null;
@@ -817,13 +984,13 @@ function calculateCompare() {
 
   if (wEnabled) {
     for (let i = 0; i < patterns.length; i++) {
-      if (isNaN(patWStarts[i])) { alert(`パターン${['①','②','③','④'][i]}の取り崩し開始年を入力してください`); return; }
-      if (patWEnds[i] !== Infinity && patWEnds[i] <= patWStarts[i]) { alert(`パターン${['①','②','③','④'][i]}の取り崩し停止年は開始年より後に設定してください`); return; }
+      if (isNaN(patWStarts[i])) { showError(`パターン${['①','②','③','④'][i]}の取り崩し開始年を入力してください`, wStartIds[i]); return; }
+      if (patWEnds[i] !== Infinity && patWEnds[i] <= patWStarts[i]) { showError(`パターン${['①','②','③','④'][i]}の取り崩し停止年は開始年より後に設定してください`, wEndIds[i]); return; }
     }
   }
 
   const results = patterns.map((p, i) =>
-    runSimulation(fund, p.startYear, duration, wEnabled, patWStarts[i], patWEnds[i], fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, p.customRate, mtChangePts)
+    runSimulation(fund, p.startYear, duration, wEnabled, patWStarts[i], patWEnds[i], fixedMonthlyW, rateAnnualW, lsAmt, mtAmt, mtInitAmt, p.customRate, mtChangePts, s.nisaEnabled, s.inflRate)
   );
 
   // Show output
@@ -867,7 +1034,18 @@ function renderComparisonTable(results, startYears, duration, colors, wEnabled, 
   rows += row('最終評価額（残高）',     results.map(r => cv(fmt(r.finalVal), r.finalVal >= r.totalInvested)));
   rows += row('損益',                   results.map(r => cv((r.profit>=0?'+':'')+fmt(r.profit), r.profit>=0)));
   rows += row('損益率',                 results.map(r => { const p=r.totalInvested>0?r.profit/r.totalInvested*100:0; return cv((p>=0?'+':'')+p.toFixed(1)+'%',p>=0); }));
-  rows += row('年平均リターン (CAGR)',   results.map(r => cv((r.cagr>=0?'+':'')+r.cagr.toFixed(2)+'%', r.cagr>=0)));
+  rows += row('年平均リターン (IRR)',    results.map(r => cv((r.cagr>=0?'+':'')+r.cagr.toFixed(2)+'%', r.cagr>=0)));
+  if (results.some(r => r.inflRate > 0)) {
+    rows += row('実質最終評価額（インフレ調整後）', results.map(r => `<span class="yellow">${fmt(r.realFinalVal)}</span>`));
+  }
+
+  if (results.some(r => r.nisaEnabled)) {
+    rows += `<tr class="sep-row"><td colspan="${results.length + 1}">🏦 NISA内訳</td></tr>`;
+    rows += row('NISA口座残高（非課税）', results.map(r => `<span class="green">${fmt(r.finalValN)}</span>`));
+    rows += row('課税口座残高',           results.map(r => `<span class="orange">${fmt(r.finalValT)}</span>`));
+    rows += row('NISA生涯枠 使用額',      results.map(r => `<span class="blue">${fmt(r.lifetimeUsed)}</span>`));
+    rows += row('取り崩し時の税額（累計）', results.map(r => `<span class="${r.totalTax>0?'red':'green'}">${fmt(r.totalTax)}</span>`));
+  }
 
   if (wEnabled) {
     const colspan = results.length + 1;
