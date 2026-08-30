@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e40af">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="スワップ試算">
+<title>スワップポイント シミュレーター</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{
+  --primary:#2563eb;--primary-dark:#1d4ed8;--success:#16a34a;--warning:#d97706;
+  --danger:#dc2626;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;
+  --muted:#64748b;--accent:#dbeafe;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;}
+header{background:linear-gradient(135deg,#1e40af 0%,#0284c7 100%);color:#fff;padding:18px 24px;}
+header h1{font-size:20px;font-weight:700;}
+header p{font-size:12px;opacity:.85;margin-top:2px;}
+.layout{display:grid;grid-template-columns:380px 1fr;min-height:calc(100vh - 64px);}
+.sidebar{background:var(--card);border-right:1px solid var(--border);padding:18px;overflow-y:auto;}
+.main{padding:22px;overflow-y:auto;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;}
+.field .hint{font-size:11px;color:var(--muted);font-weight:400;margin-top:3px;}
+input,select{width:100%;padding:10px 10px;border:1px solid var(--border);border-radius:6px;
+  font-size:16px;background:#fff;color:var(--text);}
+input:focus,select:focus{outline:2px solid var(--accent);border-color:var(--primary);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.seg{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.seg button{flex:1;padding:11px 8px;border:0;background:#fff;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);}
+.seg button.active{background:var(--primary);color:#fff;}
+.btn{width:100%;padding:11px;border:0;border-radius:6px;background:var(--primary);color:#fff;
+  font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;}
+.btn:hover{background:var(--primary-dark);}
+.btn:disabled{opacity:.6;cursor:wait;}
+.note{font-size:11px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+.c{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.c .k{font-size:11px;color:var(--muted);font-weight:600;}
+.c .v{font-size:18px;font-weight:700;margin-top:4px;word-break:break-all;}
+.chart-box{position:relative;height:280px;}
+.c .v.pos{color:var(--success);} .c .v.neg{color:var(--danger);}
+.c.alert{border-color:var(--danger);background:#fef2f2;}
+.c.ok{border-color:var(--success);background:#f0fdf4;}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px;}
+.panel h3{font-size:13px;color:var(--primary-dark);margin-bottom:12px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;}
+th{background:#f8fafc;color:var(--muted);font-weight:600;position:sticky;top:0;}
+td:first-child,th:first-child{text-align:left;}
+.tbl-wrap{max-height:420px;overflow:auto;}
+tr.cut td{background:#fef2f2;font-weight:700;color:var(--danger);}
+.msg{padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;}
+.msg.err{background:#fef2f2;color:var(--danger);border:1px solid #fecaca;}
+.msg.warn{background:#fffbeb;color:var(--warning);border:1px solid #fde68a;}
+.placeholder{color:var(--muted);text-align:center;padding:60px 20px;}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{border-right:0;border-bottom:1px solid var(--border);}
+  .main{padding:16px;}
+}
+@media(max-width:480px){
+  .cards{grid-template-columns:1fr 1fr;gap:8px;}
+  .c{padding:10px;}
+  .c .v{font-size:15px;}
+  .chart-box{height:230px;}
+  .panel{padding:12px;}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>スワップポイント シミュレーター</h1>
+  <p>日本のFX口座（レバレッジ25倍）想定 ／ 為替差損益とスワップ損益をヒストリカルレートで検証</p>
+</header>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="field">
+      <label>通貨ペア</label>
+      <select id="pair">
+        <option value="TRYJPY">リラ/円 (TRY/JPY)</option>
+        <option value="MXNJPY">ペソ/円 (MXN/JPY)</option>
+        <option value="ZARJPY">ランド/円 (ZAR/JPY)</option>
+        <option value="CHFTRY">フラン/リラ (CHF/TRY)</option>
+        <option value="CHFMXN">フラン/ペソ (CHF/MXN)</option>
+        <option value="CHFZAR">フラン/ランド (CHF/ZAR)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>売買方向</label>
+      <div class="seg" id="side">
+        <button data-v="buy" class="active">買い（ロング）</button>
+        <button data-v="sell">売り（ショート）</button>
+      </div>
+      <div class="hint">為替差損益の方向に反映されます（スワップは下の入力値をそのまま使用）。</div>
+    </div>
+    <div class="field">
+      <label>ロット数（1ロット = 1万通貨）</label>
+      <input type="number" id="lots" value="1" min="0.01" step="0.01">
+      <div class="hint">建玉のベース通貨数量 = ロット数 × 10,000。</div>
+    </div>
+    <div class="field">
+      <label>入金額（円）</label>
+      <input type="number" id="deposit" value="1000000" min="0" step="10000">
+    </div>
+    <div class="field">
+      <label>1ロット（1万通貨）あたり 1日のスワップ（円）</label>
+      <input type="number" id="swap" value="30" step="1">
+      <div class="hint">選択した売買方向での値。受取＝プラス／支払＝マイナス。期間中は一定として計算します。</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>開始年月</label>
+        <input type="month" id="start" value="2015-01">
+      </div>
+      <div class="field">
+        <label>終了年月</label>
+        <input type="month" id="end" value="2020-01">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>レバレッジ（倍）</label>
+        <input type="number" id="lev" value="25" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>ロスカット維持率（%）</label>
+        <input type="number" id="cut" value="100" min="0" step="5">
+      </div>
+    </div>
+    <button class="btn" id="run">シミュレーション実行</button>
+    <div class="note">
+      ヒストリカルレートは <b>ECB基準レート</b>（frankfurter.app・無料APIキー不要）を月初の営業日で取得します。
+      クロス円は EUR基準から合成、フラン/○○の必要証拠金・損益は CHF/JPY・○○/JPY で円換算します。<br><br>
+      ※ ECB基準レートは実際のFX業者の売買レート・スプレッドと差があります。スワップは手入力の概算です。本ツールは投資助言ではありません。
+    </div>
+  </aside>
+  <main class="main" id="out">
+    <div class="placeholder">左の条件を入力して「シミュレーション実行」を押してください。</div>
+  </main>
+</div>
+
+<script>
+const PAIRS={
+  TRYJPY:{label:"リラ/円 (TRY/JPY)",base:"TRY",quote:"JPY"},
+  MXNJPY:{label:"ペソ/円 (MXN/JPY)",base:"MXN",quote:"JPY"},
+  ZARJPY:{label:"ランド/円 (ZAR/JPY)",base:"ZAR",quote:"JPY"},
+  CHFTRY:{label:"フラン/リラ (CHF/TRY)",base:"CHF",quote:"TRY"},
+  CHFMXN:{label:"フラン/ペソ (CHF/MXN)",base:"CHF",quote:"MXN"},
+  CHFZAR:{label:"フラン/ランド (CHF/ZAR)",base:"CHF",quote:"ZAR"},
+};
+const CCYS=["JPY","CHF","TRY","MXN","ZAR"];
+let side="buy";
+const cache={};
+let charts=[];
+
+document.querySelectorAll("#side button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#side button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); side=b.dataset.v;
+});
+document.getElementById("run").onclick=run;
+
+function eurRate(day,ccy){ return ccy==="EUR"?1:day[ccy]; }
+// base/quote レート = quote per 1 base
+function pairRate(day,p){ return eurRate(day,p.quote)/eurRate(day,p.base); }
+// 1 単位 ccy が何円か
+function toJpy(day,ccy){ return ccy==="JPY"?1:day.JPY/eurRate(day,ccy); }
+
+function monthList(s,e){
+  let [sy,sm]=s.split("-").map(Number), [ey,em]=e.split("-").map(Number);
+  const out=[]; let y=sy,m=sm; let guard=0;
+  while((y<ey||(y===ey&&m<=em))&&guard++<1200){
+    out.push(y+"-"+String(m).padStart(2,"0")); m++; if(m>12){m=1;y++;}
+  }
+  return out;
+}
+function nextMonthFirst(month){
+  let [y,m]=month.split("-").map(Number); m++; if(m>12){m=1;y++;}
+  return y+"-"+String(m).padStart(2,"0")+"-01";
+}
+async function fetchRates(start,end){
+  const key=start+".."+end;
+  if(cache[key]) return cache[key];
+  const q=`${start}..${end}?symbols=${CCYS.join(",")}`;
+  const urls=[
+    `https://api.frankfurter.dev/v1/${q}`,
+    `https://api.frankfurter.app/${q}`,
+  ];
+  let res=null,lastErr=null;
+  for(const u of urls){
+    try{ const r=await fetch(u); if(r.ok){ res=r; break; } lastErr=new Error("HTTP "+r.status); }
+    catch(e){ lastErr=e; }
+  }
+  if(!res) throw new Error("レート取得に失敗しました（"+(lastErr&&lastErr.message||"ネットワークエラー")+"）。オフラインの場合は接続を確認してください。");
+  const json=await res.json();
+  if(!json.rates||!Object.keys(json.rates).length) throw new Error("この期間のレートデータがありません。");
+  const dates=Object.keys(json.rates).sort();
+  const out={dates,rates:json.rates};
+  cache[key]=out; return out;
+}
+function snapForMonth(data,month){
+  const first=month+"-01", nxt=nextMonthFirst(month);
+  for(const d of data.dates){ if(d>=first&&d<nxt) return {date:d,r:data.rates[d]}; }
+  let best=null,bd=Infinity;
+  for(const d of data.dates){ const diff=Math.abs(Date.parse(d)-Date.parse(first)); if(diff<bd){bd=diff;best=d;} }
+  return best?{date:best,r:data.rates[best],approx:true}:null;
+}
+const dayDiff=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/864e5);
+const yen=v=>(v<0?"-":"")+"¥"+Math.abs(Math.round(v)).toLocaleString("ja-JP");
+function fmtRate(v){
+  if(!isFinite(v)) return "—";
+  const a=Math.abs(v);
+  return v.toFixed(a>=100?2:a>=10?3:a>=1?4:6);
+}
+const cls=v=>v>0?"pos":v<0?"neg":"";
+
+async function run(){
+  const btn=document.getElementById("run"); const out=document.getElementById("out");
+  charts.forEach(c=>c.destroy()); charts=[];
+  const p=PAIRS[document.getElementById("pair").value];
+  const lots=parseFloat(document.getElementById("lots").value);
+  const deposit=parseFloat(document.getElementById("deposit").value);
+  const swap=parseFloat(document.getElementById("swap").value);
+  const lev=parseFloat(document.getElementById("lev").value);
+  const cut=parseFloat(document.getElementById("cut").value);
+  const start=document.getElementById("start").value, end=document.getElementById("end").value;
+  const errs=[];
+  if(!(lots>0)) errs.push("ロット数を正しく入力してください。");
+  if(!(deposit>0)) errs.push("入金額を正しく入力してください。");
+  if(!(lev>0)) errs.push("レバレッジを正しく入力してください。");
+  if(!start||!end) errs.push("開始年月・終了年月を入力してください。");
+  if(start&&end&&start>=end) errs.push("終了年月は開始年月より後にしてください。");
+  if(errs.length){ out.innerHTML=`<div class="msg err">${errs.join("<br>")}</div>`; return; }
+
+  btn.disabled=true; btn.textContent="レート取得中…";
+  let data;
+  try{ data=await fetchRates(start+"-01",nextMonthFirst(end)); }
+  catch(e){ out.innerHTML=`<div class="msg err">${e.message}</div>`; btn.disabled=false; btn.textContent="シミュレーション実行"; return; }
+  btn.disabled=false; btn.textContent="シミュレーション実行";
+
+  const dir=side==="buy"?1:-1;
+  const units=lots*10000;
+  const months=monthList(start,end);
+  const entry=snapForMonth(data,months[0]);
+  if(!entry){ out.innerHTML=`<div class="msg err">開始年月付近のレートが見つかりませんでした。</div>`; return; }
+  const entryRate=pairRate(entry.r,p);
+  let missing=false, approxUsed=false;
+  if(!isFinite(entryRate)||entryRate<=0) missing=true;
+
+  const rows=[]; let lossCut=null, minRatio=Infinity, minRatioMonth="";
+  for(let i=0;i<months.length;i++){
+    const sn=snapForMonth(data,months[i]); if(!sn) continue;
+    if(sn.approx) approxUsed=true;
+    const d=sn.r;
+    const rate=pairRate(d,p);
+    const qJpy=toJpy(d,p.quote);
+    const baseJpy=toJpy(d,p.base);
+    if(!isFinite(rate)||!isFinite(qJpy)||!isFinite(baseJpy)){ missing=true; continue; }
+    const days=dayDiff(entry.date,sn.date);
+    const fx=units*(rate-entryRate)*dir*qJpy;         // 為替差損益（円）
+    const sw=swap*lots*days;                          // スワップ損益（円）
+    const reqMargin=units*baseJpy/lev;                // 必要証拠金（円・その時点レート）
+    const equity=deposit+fx+sw;                       // 有効証拠金
+    const ratio=reqMargin>0?equity/reqMargin*100:0;   // 証拠金維持率（%）
+    const r={month:months[i],date:sn.date,rate,fx,sw,total:fx+sw,reqMargin,equity,ratio,days};
+    rows.push(r);
+    if(i>0&&ratio<minRatio){ minRatio=ratio; minRatioMonth=months[i]; }
+    if(i>0&&ratio<=cut){ r.cut=true; lossCut=r; break; }
+  }
+  if(!rows.length||missing&&rows.length<2){
+    out.innerHTML=`<div class="msg err">この期間は必要な通貨のヒストリカルデータが不足しています（ECBデータは TRY:2005年〜 / MXN:2008年〜 が目安）。期間を新しくしてください。</div>`;
+    return;
+  }
+  const last=rows[rows.length-1];
+  if(minRatio===Infinity){ minRatio=rows[0].ratio; minRatioMonth=rows[0].month; }
+
+  let warn="";
+  if(missing) warn+=`<div class="msg warn">一部の月でレートデータが欠落していたためスキップしました。</div>`;
+  if(approxUsed) warn+=`<div class="msg warn">一部の月で月内の営業日データが無く、最寄り日のレートで代用しています。</div>`;
+
+  const cutCard=lossCut
+    ? `<div class="c alert"><div class="k">ロスカット</div><div class="v neg">発生（${lossCut.month}）</div></div>`
+    : `<div class="c ok"><div class="k">ロスカット</div><div class="v">なし（期間満了）</div></div>`;
+
+  out.innerHTML=warn+`
+    <div class="cards">
+      <div class="c"><div class="k">通貨ペア / 方向</div><div class="v" style="font-size:15px">${p.label}<br>${side==="buy"?"買い":"売り"} ${lots} ロット</div></div>
+      <div class="c"><div class="k">為替差損益</div><div class="v ${cls(last.fx)}">${yen(last.fx)}</div></div>
+      <div class="c"><div class="k">スワップ損益</div><div class="v ${cls(last.sw)}">${yen(last.sw)}</div></div>
+      <div class="c"><div class="k">合計損益</div><div class="v ${cls(last.total)}">${yen(last.total)}</div></div>
+      <div class="c"><div class="k">最終有効証拠金</div><div class="v ${cls(last.equity-deposit)}">${yen(last.equity)}</div></div>
+      <div class="c"><div class="k">総リターン</div><div class="v ${cls(last.total)}">${(last.total/deposit*100).toFixed(1)}%</div></div>
+      <div class="c"><div class="k">最低証拠金維持率</div><div class="v ${minRatio<=cut?"neg":""}">${minRatio.toFixed(0)}%（${minRatioMonth}）</div></div>
+      ${cutCard}
+      <div class="c"><div class="k">保有期間</div><div class="v" style="font-size:15px">${rows[0].date} 〜 ${last.date}<br>${last.days} 日</div></div>
+      <div class="c"><div class="k">開始→終了レート</div><div class="v" style="font-size:15px">${fmtRate(entryRate)} → ${fmtRate(last.rate)}</div></div>
+      <div class="c"><div class="k">必要証拠金（開始時）</div><div class="v">${yen(rows[0].reqMargin)}</div></div>
+    </div>
+    <div class="panel"><h3>為替レート推移（${p.label}）</h3><div class="chart-box"><canvas id="ch1"></canvas></div></div>
+    <div class="panel"><h3>証拠金維持率の推移</h3><div class="chart-box"><canvas id="ch2"></canvas></div></div>
+    <div class="panel"><h3>累計損益の推移</h3><div class="chart-box"><canvas id="ch3"></canvas></div></div>
+    <div class="panel"><h3>月次明細</h3><div class="tbl-wrap"><table>
+      <thead><tr><th>年月</th><th>基準日</th><th>レート</th><th>保有日数</th><th>為替差損益</th><th>スワップ損益</th><th>合計損益</th><th>必要証拠金</th><th>有効証拠金</th><th>維持率</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr class="${r.cut?"cut":""}">
+        <td>${r.month}</td><td>${r.date}</td><td>${fmtRate(r.rate)}</td><td>${r.days}</td>
+        <td>${yen(r.fx)}</td><td>${yen(r.sw)}</td><td>${yen(r.total)}</td>
+        <td>${yen(r.reqMargin)}</td><td>${yen(r.equity)}</td><td>${r.ratio.toFixed(0)}%</td></tr>`).join("")}</tbody>
+    </table></div></div>`;
+
+  const labels=rows.map(r=>r.month);
+  const opt=extra=>({responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11}}}},
+    scales:Object.assign({x:{ticks:{maxTicksLimit:8,font:{size:10}}}},extra)});
+  charts.push(new Chart(ch1,{type:"line",data:{labels,datasets:[
+    {label:"レート",data:rows.map(r=>r.rate),borderColor:"#2563eb",backgroundColor:"rgba(37,99,235,.08)",fill:true,tension:.2,pointRadius:2}
+  ]},options:opt({y:{ticks:{font:{size:10}}}})}));
+  charts.push(new Chart(ch2,{type:"line",data:{labels,datasets:[
+    {label:"証拠金維持率(%)",data:rows.map(r=>r.ratio),borderColor:"#16a34a",tension:.2,pointRadius:2},
+    {label:"ロスカット水準("+cut+"%)",data:rows.map(()=>cut),borderColor:"#dc2626",borderDash:[6,4],pointRadius:0}
+  ]},options:opt({y:{ticks:{font:{size:10}},suggestedMin:0}})}));
+  charts.push(new Chart(ch3,{type:"line",data:{labels,datasets:[
+    {label:"為替差損益",data:rows.map(r=>r.fx),borderColor:"#2563eb",tension:.2,pointRadius:2},
+    {label:"スワップ損益",data:rows.map(r=>r.sw),borderColor:"#d97706",tension:.2,pointRadius:2},
+    {label:"合計損益",data:rows.map(r=>r.total),borderColor:"#16a34a",borderWidth:2,tension:.2,pointRadius:2}
+  ]},options:opt({y:{ticks:{font:{size:10},callback:v=>"¥"+(v/10000).toFixed(0)+"万"}}})}));
+}
+</script>
+</body>
+</html>
