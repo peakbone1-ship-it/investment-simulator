@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>バドミントンルールクイズ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<style>
+  :root{
+    --sky:#8FD3E8; --sky-light:#EAF7FB; --green:#6FBF73; --green-dark:#3f8f43;
+    --yellow:#FFD966; --orange:#FF9F45; --red:#F0665B; --blue:#4A90D9; --purple:#B084CC;
+    --ink:#2b2b2b; --card:#ffffff; --border:#e2e2e2;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; min-height:100%; background:linear-gradient(180deg,#EAF7FB 0%, #ffffff 40%);}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Rounded Mplus 1c","Yu Gothic","Meiryo",sans-serif;
+    color:var(--ink); overscroll-behavior:none; user-select:none;
+  }
+  #app{
+    max-width:480px; margin:0 auto; min-height:100vh;
+    padding: calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 20px);
+    display:flex; flex-direction:column;
+  }
+  .screen{display:none; flex-direction:column; flex:1;}
+  .screen.active{display:flex;}
+
+  /* ---- トップバー(進捗) ---- */
+  #topbar{display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; min-height:22px;}
+  #topbar[hidden]{display:none;}
+  .star-slot{font-size:20px; line-height:1; filter:grayscale(1) opacity(0.35); transition:filter .25s, transform .25s;}
+  .star-slot.filled{filter:none; transform:scale(1.15);}
+
+  /* ---- 共通カード ---- */
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:18px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.06); padding:18px;
+  }
+
+  /* ---- スタート画面 ---- */
+  #screen-start{align-items:center; justify-content:center; text-align:center; gap:18px;}
+  #screen-start .hero-badge{
+    background:var(--sky); color:#fff; border-radius:20px; padding:26px 20px; width:100%;
+  }
+  #screen-start h1{font-size:26px; margin:6px 0 4px;}
+  #screen-start p.sub{margin:0; font-size:14px; opacity:0.95;}
+  #start-illust{width:220px; height:180px; margin:6px auto;}
+  #screen-start .desc{font-size:13.5px; color:#555; line-height:1.7; padding:0 6px;}
+  .big-btn{
+    display:block; width:100%; border:none; border-radius:16px; padding:16px 20px;
+    font-size:18px; font-weight:700; font-family:inherit; color:#fff; background:var(--orange);
+    box-shadow:0 4px 0 rgba(0,0,0,0.15); cursor:pointer; touch-action:manipulation;
+  }
+  .big-btn:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.15);}
+  .best-score{font-size:12.5px; color:#888; margin-top:-6px;}
+
+  /* ---- クイズ画面 ---- */
+  #screen-quiz{gap:14px;}
+  #quiz-counter{text-align:center; font-size:12.5px; color:#888; font-weight:700; letter-spacing:.03em;}
+  #quiz-illust-wrap{
+    background:var(--sky-light); border-radius:16px; padding:8px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #quiz-illust-wrap svg{width:100%; height:auto; display:block; max-height:190px;}
+  #quiz-question{font-size:17px; font-weight:700; line-height:1.5; text-align:center; padding:2px 4px;}
+  #quiz-choices{display:flex; flex-direction:column; gap:10px;}
+  .choice-btn{
+    font-family:inherit; font-size:16px; font-weight:700; color:var(--ink);
+    background:#fff; border:2.5px solid var(--border); border-radius:14px;
+    padding:14px 16px; text-align:left; cursor:pointer; touch-action:manipulation;
+    transition:background .15s, border-color .15s, transform .1s;
+    display:flex; align-items:center; gap:10px;
+  }
+  .choice-btn .badge{
+    flex:0 0 30px; height:30px; border-radius:50%; background:var(--sky-light);
+    display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#567;
+  }
+  .choice-btn:active{transform:scale(0.98);}
+  .choice-btn.correct{background:#E8F8EA; border-color:var(--green-dark); color:var(--green-dark);}
+  .choice-btn.wrong{background:#FDEBEA; border-color:var(--red); color:#b23a30;}
+  .choice-btn[disabled]{cursor:default;}
+  .choice-btn.dim{opacity:0.45;}
+
+  /* ---- フィードバック ---- */
+  #feedback{
+    display:none; border-radius:16px; padding:14px 16px; margin-top:2px; align-items:center; gap:10px;
+    font-size:14px; line-height:1.6;
+  }
+  #feedback.show{display:flex;}
+  #feedback.ok{background:#E8F8EA; border:1.5px solid var(--green-dark);}
+  #feedback.ng{background:#FFF6E5; border:1.5px solid var(--orange);}
+  #feedback .fb-icon{font-size:26px; flex:0 0 auto;}
+  #feedback .fb-text b{display:block; font-size:15px; margin-bottom:2px;}
+
+  #next-btn{margin-top:auto;}
+  #quiz-spacer{flex:1;}
+
+  /* ---- 結果画面 ---- */
+  #screen-result{align-items:center; justify-content:center; text-align:center; gap:14px;}
+  #result-stars{font-size:40px; letter-spacing:6px;}
+  #result-title{font-size:24px; font-weight:800; margin:2px 0;}
+  #result-score{font-size:16px; color:#555;}
+  #result-msg{font-size:14px; color:#666; line-height:1.7; padding:0 8px;}
+  #confetti{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:5;}
+  .confetti-piece{position:absolute; top:-20px; border-radius:2px; animation:fall linear forwards;}
+  @keyframes fall{ to{ transform:translateY(112vh) rotate(540deg); opacity:.9; } }
+
+  @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.25);} 100%{transform:scale(1);} }
+  .pop{animation:pop .35s ease;}
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+  .shake{animation:shake .3s ease;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar" hidden></div>
+
+  <!-- スタート画面 -->
+  <main id="screen-start" class="screen active">
+    <div class="hero-badge">
+      <p class="sub">みんなでたのしむ！</p>
+      <h1>バドミントン<br>ルールクイズ</h1>
+    </div>
+    <div id="start-illust"></div>
+    <p class="desc">ぜんぶで 12もん。 えを 見ながら、バドミントンの ルールを おぼえよう！<br>せいかいすると ★ が もらえるよ。</p>
+    <button class="big-btn" id="start-btn">スタート！</button>
+    <div class="best-score" id="best-score-line" hidden></div>
+  </main>
+
+  <!-- クイズ画面 -->
+  <main id="screen-quiz" class="screen">
+    <div id="quiz-counter"></div>
+    <div id="quiz-illust-wrap"><svg id="quiz-illust" viewBox="0 0 300 190" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div id="quiz-question"></div>
+    <div id="quiz-choices"></div>
+    <div id="feedback">
+      <div class="fb-icon" id="fb-icon">🎉</div>
+      <div class="fb-text" id="fb-text"></div>
+    </div>
+    <div id="quiz-spacer"></div>
+    <button class="big-btn" id="next-btn" style="display:none;">つぎへ ▶</button>
+  </main>
+
+  <!-- 結果画面 -->
+  <main id="screen-result" class="screen">
+    <div id="result-stars"></div>
+    <div id="result-title"></div>
+    <div id="result-score"></div>
+    <div id="result-msg"></div>
+    <button class="big-btn" id="retry-btn">もういちど 遊ぶ</button>
+  </main>
+
+</div>
+<div id="confetti"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ===================== SVGイラスト部品 ===================== */
+  const COLORS = { red:'#F0665B', blue:'#4A90D9', green:'#3f8f43', purple:'#B084CC', orange:'#FF9F45' };
+
+  function svgRacket(cx, cy, scale, color, rot){
+    scale = scale || 1; color = color || COLORS.blue; rot = rot || 0;
+    let vlines = '', hlines = '';
+    for(let i=0;i<7;i++){ const x=-21+i*7; vlines += `<line x1="${x}" y1="-58" x2="${x}" y2="10" stroke="#ccc" stroke-width="0.9"/>`; }
+    for(let i=0;i<9;i++){ const y=-56+i*8; hlines += `<line x1="-25" y1="${y}" x2="25" y2="${y}" stroke="#ccc" stroke-width="0.9"/>`; }
+    return `<g transform="translate(${cx},${cy}) rotate(${rot}) scale(${scale})">
+      <rect x="-5" y="0" width="10" height="46" rx="4" fill="#8B5A2B"/>
+      <line x1="0" y1="4" x2="0" y2="-34" stroke="#666" stroke-width="5"/>
+      <ellipse cx="0" cy="-56" rx="34" ry="64" fill="${color}" stroke="#333" stroke-width="3"/>
+      <ellipse cx="0" cy="-56" rx="27" ry="57" fill="#fff"/>
+      <g clip-path="url(#clip-${Math.round(cx)}-${Math.round(cy)})">${vlines}${hlines}</g>
+      <clipPath id="clip-${Math.round(cx)}-${Math.round(cy)}"><ellipse cx="0" cy="-56" rx="27" ry="57"/></clipPath>
+    </g>`;
+  }
+
+  function svgShuttle(cx, cy, scale, rot){
+    scale = scale || 1; rot = rot || 0;
+    let feathers = '';
+    for(let i=0;i<10;i++){
+      const ang = -70 + (140/9)*i;
+      const rad = ang*Math.PI/180;
+      const x2 = 32*Math.sin(rad), y2 = -32*Math.cos(rad)-4;
+      feathers += `<polygon points="-3,-4 ${x2-3},${y2} ${x2+3},${y2} 3,-4" fill="#fbfbfb" stroke="#e6e6e6" stroke-width="1"/>`;
+    }
+    return `<g transform="translate(${cx},${cy}) rotate(${rot}) scale(${scale})">
+      ${feathers}
+      <circle r="7" fill="#fff" stroke="#333" stroke-width="1.2"/>
+    </g>`;
+  }
+
+  function svgNet(x,y,w,h){
+    let grid = '';
+    for(let xx=0; xx<=w; xx+=10) grid += `<line x1="${x+xx}" y1="${y}" x2="${x+xx}" y2="${y+h}" stroke="#bbb" stroke-width="0.6"/>`;
+    for(let yy=0; yy<=h; yy+=10) grid += `<line x1="${x}" y1="${y+yy}" x2="${x+w}" y2="${y+yy}" stroke="#bbb" stroke-width="0.6"/>`;
+    return `<g>
+      <line x1="${x}" y1="${y-10}" x2="${x}" y2="${y+h}" stroke="#555" stroke-width="4"/>
+      <line x1="${x+w}" y1="${y-10}" x2="${x+w}" y2="${y+h}" stroke="#555" stroke-width="4"/>
+      <rect x="${x}" y="${y-10}" width="${w}" height="7" fill="#fff" stroke="#222" stroke-width="1"/>
+      ${grid}
+    </g>`;
+  }
+
+  function svgStick(cx, cy, scale, color, withRacket, racketAngle){
+    scale = scale || 1; color = color || COLORS.red;
+    withRacket = withRacket===undefined ? true : withRacket;
+    racketAngle = racketAngle===undefined ? 25 : racketAngle;
+    return `<g transform="translate(${cx},${cy}) scale(${scale})">
+      <ellipse cx="0" cy="2" rx="13" ry="3" fill="#dcdcdc"/>
+      <line x1="0" y1="-30" x2="-8" y2="0" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="-30" x2="8" y2="0" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="-60" x2="0" y2="-30" stroke="${color}" stroke-width="5" stroke-linecap="round"/>
+      <line x1="0" y1="-56" x2="14" y2="-76" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="-50" x2="-13" y2="-40" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="0" cy="-70" r="10.5" fill="#FFD9B3" stroke="${color}" stroke-width="1"/>
+      <circle cx="-3.5" cy="-71" r="1" fill="#333"/><circle cx="3.5" cy="-71" r="1" fill="#333"/>
+      <path d="M -4 -66 Q 0 -63 4 -66" stroke="#333" stroke-width="1" fill="none"/>
+      ${withRacket ? svgRacket(14,-76,0.34,color,racketAngle) : ''}
+    </g>`;
+  }
+
+  function svgMiniCourt(x,y,w,h){
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#6FBF73"/>
+      <line x1="${x+w/2}" y1="${y}" x2="${x+w/2}" y2="${y+h}" stroke="#fff" stroke-width="3"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="none" stroke="#fff" stroke-width="2.5"/>`;
+  }
+
+  function wrap(inner, vb){ return inner; } // svg内容そのまま(viewBoxは固定300x190)
+
+  /* ===================== 12問データ ===================== */
+  const QUESTIONS = [
+    { // 1
+      illust: svgRacket(150,140,1.35,COLORS.blue,0),
+      q: 'これは 何を 打つ どうぐ？',
+      choices: [ {t:'ラケット', ok:true}, {t:'なわとび', ok:false}, {t:'バット', ok:false} ],
+      okFb: 'せいかい！ シャトルを 打つのは「ラケット」だよ。',
+      ngFb: 'ざんねん！ これは シャトルを 打つ「ラケット」だよ。'
+    },
+    { // 2
+      illust: svgShuttle(150,110,2.6,0),
+      q: 'コルクに 羽根が ついた、この玉の 名前は？',
+      choices: [ {t:'シャトル', ok:true}, {t:'ボール', ok:false}, {t:'たま入れの玉', ok:false} ],
+      okFb: 'せいかい！ 「シャトル」を 打ち合うのが バドミントンだよ。',
+      ngFb: '正しくは「シャトル」だよ。羽根が ついているのが 目印！'
+    },
+    { // 3
+      illust: svgMiniCourt(20,20,260,150)
+              + svgStick(80,150,0.95,COLORS.red,true,25) + svgStick(220,150,0.95,COLORS.blue,true,-25),
+      q: '1人 たいたい 1人で たたかう ゲームを 何と いう？',
+      choices: [ {t:'シングルス', ok:true}, {t:'ダブルス', ok:false} ],
+      okFb: 'せいかい！ 1人 対 1人は「シングルス」だよ。',
+      ngFb: '正しくは「シングルス」。1対1の たたかいだよ。'
+    },
+    { // 4
+      illust: svgMiniCourt(20,20,260,150)
+              + svgStick(65,150,0.85,COLORS.red,true,25) + svgStick(115,155,0.85,COLORS.red,true,15)
+              + svgStick(185,155,0.85,COLORS.blue,true,-15) + svgStick(235,150,0.85,COLORS.blue,true,-25),
+      q: '2人 たいたい 2人で たたかう ゲームを 何と いう？',
+      choices: [ {t:'ダブルス', ok:true}, {t:'シングルス', ok:false} ],
+      okFb: 'せいかい！ 2人 対 2人は「ダブルス」。なかまと 力を合わせよう！',
+      ngFb: '正しくは「ダブルス」。2人組で たたかう ほうだよ。'
+    },
+    { // 5 (正しいサーブ: ラケットが こしより 下)
+      illust: `<line x1="20" y1="140" x2="280" y2="140" stroke="#F0665B" stroke-dasharray="5 5" stroke-width="2"/>
+                <text x="277" y="135" font-size="11" fill="#F0665B" text-anchor="end">こしの高さ</text>
+                ${svgStick(120,175,1.15,COLORS.green,false,0)}
+                <line x1="134" y1="92" x2="172" y2="186" stroke="#999" stroke-width="2" stroke-dasharray="3 3"/>
+                ${svgRacket(172,208,0.42,COLORS.green,-15)}
+                ${svgShuttle(220,175,1.0,20)}`,
+      q: 'ラケットの先が こしより 下から シャトルを 打っているよ。この サーブ、せいかい？',
+      choices: [ {t:'せいかい(OK)', ok:true}, {t:'ダメ(NG)', ok:false} ],
+      okFb: 'せいかい！ サーブは ラケットの先が こしより 下から 打つのが ルールだよ。',
+      ngFb: 'これは OK！ ラケットの先が こしより 下から 打てているよ。'
+    },
+    { // 6 (誤ったサーブ: ラケットが こしより 上)
+      illust: `<line x1="20" y1="140" x2="280" y2="140" stroke="#F0665B" stroke-dasharray="5 5" stroke-width="2"/>
+                <text x="277" y="135" font-size="11" fill="#F0665B" text-anchor="end">こしの高さ</text>
+                ${svgStick(120,175,1.15,COLORS.purple,false,0)}
+                <line x1="134" y1="92" x2="172" y2="70" stroke="#999" stroke-width="2" stroke-dasharray="3 3"/>
+                ${svgRacket(172,93,0.42,COLORS.purple,10)}
+                ${svgShuttle(225,55,1.0,-30)}`,
+      q: 'ラケットを 高く上げて、こしより 上から シャトルを 打とうと しているよ。この サーブ、せいかい？',
+      choices: [ {t:'せいかい(OK)', ok:false}, {t:'ダメ(NG)', ok:true} ],
+      okFb: '正しくは NG！ こしより 上から 打つ サーブは ルールいはんだよ。',
+      ngFb: 'せいかい！ こしより 上から 打つ サーブは ダメなんだ。'
+    },
+    { // 7
+      illust: `${svgMiniCourt(20,20,260,150)}
+                <rect x="20" y="95" width="130" height="75" fill="#FFF6C2" opacity="0.85"/>
+                <rect x="150" y="20" width="130" height="75" fill="#FFF6C2" opacity="0.85"/>
+                <rect x="20" y="20" width="260" height="150" rx="6" fill="none" stroke="#fff" stroke-width="2.5"/>
+                <line x1="150" y1="20" x2="150" y2="170" stroke="#fff" stroke-width="3"/>
+                ${svgStick(85,150,0.9,COLORS.green,true,25)}
+                <text x="215" y="55" font-size="26" text-anchor="middle">🏸</text>`,
+      q: 'サーブは 自分から見て どちらに 向かって 打つ？',
+      choices: [ {t:'ななめ向かいの コート', ok:true}, {t:'まっすぐ うしろ', ok:false}, {t:'自分の 足もと', ok:false} ],
+      okFb: 'せいかい！ サーブは 対角線(ななめ)の コートに 入れるように 打つよ。',
+      ngFb: '正しくは「ななめ向かいの コート」。黄色い所を ねらうよ。'
+    },
+    { // 8
+      illust: `<rect x="40" y="55" width="220" height="80" rx="14" fill="#2B2B2B"/>
+                <text x="150" y="115" font-size="48" font-weight="bold" fill="#FFD966" text-anchor="middle">15</text>
+                <text x="150" y="45" font-size="13" fill="#555" text-anchor="middle">何点 先取で 勝ち？</text>`,
+      q: 'バドミントンは 何点 先に とったら 勝ち？',
+      choices: [ {t:'15点', ok:true}, {t:'11点', ok:false}, {t:'21点', ok:false} ],
+      okFb: 'せいかい！ 先に「15点」とった方の 勝ちだよ(2点差 必要。20-20なら21点目で決まる)。',
+      ngFb: '正しくは「15点」。先に 15点とった方が 勝ちだよ。'
+    },
+    { // 9
+      illust: `${svgStick(90,155,1.0,COLORS.green,true,25)}${svgStick(210,155,1.0,COLORS.orange,true,-25)}
+                ${svgShuttle(150,90,1.1,0)}
+                <text x="150" y="40" font-size="15" text-anchor="middle" font-weight="bold">サーブ ミス → 相手が 返した！</text>`,
+      q: 'サーブした人が うちミスしても、うけた相手が 上手に 返せたら どうなる？',
+      choices: [ {t:'相手に 1点 入る', ok:true}, {t:'どちらにも 点は 入らない', ok:false} ],
+      okFb: 'せいかい！ 今の バドミントンは「ラリーポイント制」。うった回数だけ 点が入るよ。',
+      ngFb: '正しくは「相手に1点 入る」。サーブでも 返せなければ 相手の点になるよ。'
+    },
+    { // 10 (ラインの上=セーフ)
+      illust: `<rect x="20" y="20" width="260" height="150" fill="#6FBF73"/>
+                <line x1="150" y1="20" x2="150" y2="170" stroke="#fff" stroke-width="4"/>
+                ${svgShuttle(150,95,1.3,0)}
+                <text x="150" y="50" font-size="12" fill="#fff" text-anchor="middle">ライン(線)の 上に 落ちた</text>`,
+      q: 'シャトルが ちょうど ラインの 上に 落ちました。セーフ？ アウト？',
+      choices: [ {t:'セーフ(IN)', ok:true}, {t:'アウト', ok:false} ],
+      okFb: 'せいかい！ ラインに すこしでも 触れていれば セーフ(IN)だよ。',
+      ngFb: '正しくは セーフ(IN)。線に 触れていれば OKなんだ。'
+    },
+    { // 11 (ライン外=アウト)
+      illust: `<rect x="20" y="20" width="260" height="150" fill="#6FBF73"/>
+                <rect x="0" y="0" width="300" height="190" fill="none"/>
+                <line x1="150" y1="20" x2="150" y2="170" stroke="#fff" stroke-width="4"/>
+                ${svgShuttle(290,30,1.1,20)}
+                <text x="150" y="50" font-size="12" fill="#333" text-anchor="middle">コートの 外に 落ちた</text>`,
+      q: 'シャトルが コートの 線の外に 落ちました。セーフ？ アウト？',
+      choices: [ {t:'セーフ(IN)', ok:false}, {t:'アウト', ok:true} ],
+      okFb: 'せいかい！ 線の 外に 出たら アウト(相手の点)だよ。',
+      ngFb: '正しくは アウト。コートの 外に 落ちたら 相手の 点になるよ。'
+    },
+    { // 12 (ネットにひっかかる)
+      illust: `${svgNet(100,55,100,115)}
+                ${svgShuttle(150,55,1.2,0)}
+                <text x="150" y="35" font-size="12" text-anchor="middle">シャトルが ネットに ひっかかった</text>`,
+      q: '打った シャトルが ネットに 当たって 止まりました。どうなる？',
+      choices: [ {t:'相手の 点になる', ok:true}, {t:'もう1回 打っていい', ok:false} ],
+      okFb: 'せいかい！ ネットに 当たって 相手に 届かないと、相手の 点になるよ。',
+      ngFb: '正しくは「相手の 点になる」。ネットに ひっかかったら アウトだよ。'
+    }
+  ];
+
+  /* ===================== ゲーム状態 ===================== */
+  let idx = 0, score = 0, answered = false;
+
+  const $ = (id) => document.getElementById(id);
+  const screens = { start: $('screen-start'), quiz: $('screen-quiz'), result: $('screen-result') };
+  function showScreen(name){
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+    $('topbar').hidden = (name !== 'quiz');
+  }
+
+  function buildTopbar(){
+    const bar = $('topbar');
+    bar.innerHTML = '';
+    for(let i=0;i<QUESTIONS.length;i++){
+      const span = document.createElement('span');
+      span.className = 'star-slot';
+      span.textContent = '★';
+      span.id = 'star-' + i;
+      bar.appendChild(span);
+    }
+  }
+
+  function startIllust(){
+    $('start-illust').innerHTML = `<svg viewBox="0 0 300 190" xmlns="http://www.w3.org/2000/svg">
+      ${svgMiniCourt(20,30,260,140)}
+      ${svgStick(85,165,1.05,COLORS.red,true,25)}
+      ${svgStick(215,165,1.05,COLORS.blue,true,-25)}
+      ${svgShuttle(150,95,1.15,10)}
+    </svg>`;
+  }
+
+  function renderQuestion(){
+    answered = false;
+    const item = QUESTIONS[idx];
+    $('quiz-counter').textContent = `だい ${idx+1} もん / ぜんぶで ${QUESTIONS.length} もん`;
+    $('quiz-illust').innerHTML = item.illust;
+    $('quiz-question').textContent = item.q;
+    const choicesWrap = $('quiz-choices');
+    choicesWrap.innerHTML = '';
+    const labels = ['A','B','C'];
+    item.choices.forEach((c, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.innerHTML = `<span class="badge">${labels[i]}</span><span>${c.t}</span>`;
+      btn.addEventListener('click', () => onAnswer(btn, c.ok, item));
+      choicesWrap.appendChild(btn);
+    });
+    $('feedback').classList.remove('show','ok','ng');
+    $('next-btn').style.display = 'none';
+  }
+
+  function onAnswer(btn, isOk, item){
+    if(answered) return;
+    answered = true;
+    const allBtns = document.querySelectorAll('#quiz-choices .choice-btn');
+    allBtns.forEach(b => { b.disabled = true; if(b !== btn) b.classList.add('dim'); });
+
+    if(isOk){
+      btn.classList.add('correct','pop');
+      score++;
+      const star = $('star-' + idx);
+      if(star){ star.classList.add('filled'); star.classList.add('pop'); }
+      $('fb-icon').textContent = '🎉';
+      $('fb-text').innerHTML = `<b>せいかい！</b>${item.okFb}`;
+      $('feedback').classList.add('show','ok');
+    } else {
+      btn.classList.add('wrong','shake');
+      // 正解ボタンも見せてあげる
+      allBtns.forEach(b => {
+        const label = b.querySelector('span:last-child').textContent;
+        const match = item.choices.find(c => c.t === label);
+        if(match && match.ok){ b.classList.remove('dim'); b.classList.add('correct'); }
+      });
+      $('fb-icon').textContent = '💡';
+      $('fb-text').innerHTML = `<b>おしい！</b>${item.ngFb}`;
+      $('feedback').classList.add('show','ng');
+    }
+    $('next-btn').style.display = 'block';
+  }
+
+  function nextQuestion(){
+    idx++;
+    if(idx >= QUESTIONS.length){ finishGame(); return; }
+    renderQuestion();
+  }
+
+  function finishGame(){
+    showScreen('result');
+    const total = QUESTIONS.length;
+    const pct = score / total;
+    let starCount = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : pct >= 0.3 ? 1 : 0;
+    $('result-stars').textContent = '★★★'.split('').map((s,i) => i < starCount ? '⭐' : '☆').join('');
+    let title, msg;
+    if(pct === 1){ title = 'パーフェクト！'; msg = 'すごい！ぜんもん せいかいだよ。もう バドミントンの ルール はかせだね！'; spawnConfetti(); }
+    else if(pct >= 0.75){ title = 'よくできました！'; msg = 'とても よく わかっているね。もう1回で パーフェクトを ねらおう！'; }
+    else if(pct >= 0.4){ title = 'なかなか いいね！'; msg = 'ルールが すこしずつ わかってきたよ。もういちど ちょうせんしてみよう！'; }
+    else { title = 'はじめの いっぽ！'; msg = 'PDFの「バドミントンのルールがわかる本」も 見ながら、もう1回 やってみよう！'; }
+    $('result-title').textContent = title;
+    $('result-score').textContent = `せいかい: ${score} / ${total} もん`;
+    $('result-msg').textContent = msg;
+
+    const best = Math.max(score, parseInt(localStorage.getItem('bdm_best')||'0',10));
+    localStorage.setItem('bdm_best', String(best));
+  }
+
+  function spawnConfetti(){
+    const box = $('confetti');
+    const colors = ['#F0665B','#FFD966','#6FBF73','#4A90D9','#B084CC','#FF9F45'];
+    for(let i=0;i<40;i++){
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      const size = 6 + Math.random()*6;
+      p.style.width = size+'px'; p.style.height = size*0.6+'px';
+      p.style.left = Math.random()*100 + 'vw';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.animationDuration = (2.2 + Math.random()*1.6) + 's';
+      p.style.animationDelay = (Math.random()*0.4) + 's';
+      box.appendChild(p);
+      setTimeout(() => p.remove(), 4200);
+    }
+  }
+
+  function resetGame(){
+    idx = 0; score = 0; answered = false;
+    buildTopbar();
+    showScreen('quiz');
+    renderQuestion();
+  }
+
+  /* ===================== 初期化 ===================== */
+  startIllust();
+  const best = parseInt(localStorage.getItem('bdm_best')||'0',10);
+  if(best > 0){
+    $('best-score-line').hidden = false;
+    $('best-score-line').textContent = `これまでの さいこう スコア： ${best} / ${QUESTIONS.length} もん`;
+  }
+  $('start-btn').addEventListener('click', resetGame);
+  $('next-btn').addEventListener('click', nextQuestion);
+  $('retry-btn').addEventListener('click', resetGame);
+
+})();
+</script>
+</body>
+</html>
