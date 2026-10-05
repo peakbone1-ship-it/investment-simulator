@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>検査音声ガイド</title>
+<style>
+  :root {
+    --bg: #eef2f7;
+    --card: #ffffff;
+    --accent: #1a6fb0;
+    --accent-dark: #12507f;
+    --text: #222;
+    --sub: #667;
+    --warn: #b04a1a;
+    --ok: #1a8f4a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .screen { display: none; max-width: 560px; margin: 0 auto; padding: 12px 12px 40px; }
+  .screen.active { display: block; }
+
+  header.app-header {
+    background: var(--accent);
+    color: #fff;
+    padding: 14px 16px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+  }
+  header.app-header small { display: block; font-weight: normal; font-size: 12px; opacity: .85; margin-top: 2px; }
+
+  h2.section { font-size: 15px; color: var(--sub); margin: 18px 4px 8px; }
+
+  /* ---------- 設定画面 ---------- */
+  .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .lang-btn {
+    background: var(--card);
+    border: 2px solid #ccd5e0;
+    border-radius: 10px;
+    padding: 10px 4px;
+    text-align: center;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .lang-btn .native { display: block; font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .lang-btn.selected { border-color: var(--accent); background: #e3f0fa; font-weight: bold; }
+  .lang-btn .voice-mark { display: block; font-size: 10px; margin-top: 3px; }
+  .voice-ok { color: var(--ok); }
+  .voice-ng { color: var(--warn); }
+
+  .exam-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .exam-btn {
+    background: var(--card);
+    border: 2px solid #ccd5e0;
+    border-radius: 10px;
+    padding: 16px 8px;
+    text-align: center;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .exam-btn.selected { border-color: var(--accent); background: #e3f0fa; font-weight: bold; }
+  .exam-btn.disabled { opacity: .45; pointer-events: none; }
+  .exam-btn small { display: block; font-size: 11px; color: var(--sub); margin-top: 3px; }
+
+  .start-btn {
+    display: block;
+    width: 100%;
+    margin-top: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .start-btn:disabled { background: #aab8c6; }
+
+  .voice-warning {
+    margin-top: 14px;
+    background: #fdeee4;
+    border: 1px solid var(--warn);
+    color: var(--warn);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    display: none;
+  }
+
+  /* ---------- フレーズ画面 ---------- */
+  .talk-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .talk-header .back {
+    background: rgba(255,255,255,.18);
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .talk-header .info { flex: 1; min-width: 0; }
+  .talk-header .info .exam { font-weight: bold; font-size: 15px; }
+  .talk-header .info .lang { font-size: 12px; opacity: .9; }
+
+  .phrase-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    max-width: 560px;
+    margin: 12px auto 0;
+    padding: 0 12px;
+  }
+  .phrase-btn {
+    background: var(--card);
+    border: 2px solid #d5dde6;
+    border-radius: 14px;
+    padding: 12px 10px 14px;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+    min-height: 108px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .phrase-btn .num {
+    position: absolute;
+    top: 8px; right: 10px;
+    font-size: 11px;
+    color: #9aa8b6;
+    font-weight: bold;
+  }
+  .phrase-btn .icon { font-size: 26px; line-height: 1; }
+  .phrase-btn .jp { font-size: 14px; font-weight: bold; margin-top: 6px; line-height: 1.4; }
+  .phrase-btn .tr { font-size: 11px; color: var(--sub); margin-top: 5px; line-height: 1.4; word-break: break-word; }
+  .phrase-btn.speaking {
+    border-color: var(--accent);
+    background: #e3f0fa;
+    box-shadow: 0 0 0 3px rgba(26,111,176,.25);
+  }
+
+  .control-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-top: 1px solid #d5dde6;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .control-inner { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
+  .ctl-btn {
+    flex: 1;
+    border: 2px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 10px;
+    padding: 12px 4px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .ctl-btn.stop { border-color: var(--warn); color: var(--warn); }
+  .rate-wrap { flex: 1.2; font-size: 11px; color: var(--sub); text-align: center; }
+  .rate-wrap input { width: 100%; }
+
+  .phrase-area { padding-bottom: 96px; }
+</style>
+</head>
+<body>
+
+<!-- ================= 画面1：設定 ================= -->
+<div id="screen-setup" class="screen active">
+  <header class="app-header">検査音声ガイド<small>言語と検査を選んでください</small></header>
+
+  <h2 class="section">言語 / Language</h2>
+  <div class="lang-grid" id="langGrid"></div>
+
+  <div class="voice-warning" id="voiceWarning"></div>
+
+  <h2 class="section">検査の種類</h2>
+  <div class="exam-grid" id="examGrid"></div>
+
+  <button class="start-btn" id="startBtn" disabled>開始する</button>
+</div>
+
+<!-- ================= 画面2：フレーズ ================= -->
+<div id="screen-talk" class="screen">
+  <div class="talk-header">
+    <button class="back" id="backBtn">◀ 戻る</button>
+    <div class="info">
+      <div class="exam" id="hdrExam"></div>
+      <div class="lang" id="hdrLang"></div>
+    </div>
+  </div>
+
+  <div class="phrase-area">
+    <div class="phrase-grid" id="phraseGrid"></div>
+  </div>
+
+  <div class="control-bar">
+    <div class="control-inner">
+      <button class="ctl-btn" id="repeatBtn">↺ もう一度</button>
+      <button class="ctl-btn stop" id="stopBtn">■ 停止</button>
+      <div class="rate-wrap">
+        速さ <span id="rateVal">0.9</span>
+        <input type="range" id="rateSlider" min="0.5" max="1.3" step="0.1" value="0.9">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 言語定義
+//  voiceLangs: 音声合成エンジンの言語コード候補（先頭から順に探す）
+// ============================================================
+const LANGUAGES = [
+  { id: "en", label: "英語",           native: "English",          voiceLangs: ["en-US", "en-GB", "en"] },
+  { id: "zh", label: "北京語",         native: "普通话",            voiceLangs: ["zh-CN", "cmn-Hans-CN", "zh"] },
+  { id: "yue", label: "広東語",        native: "廣東話",            voiceLangs: ["zh-HK", "yue-HK", "yue-Hant-HK", "yue"] },
+  { id: "ko", label: "韓国語",         native: "한국어",            voiceLangs: ["ko-KR", "ko"] },
+  { id: "es", label: "スペイン語",     native: "Español",          voiceLangs: ["es-ES", "es-US", "es"] },
+  { id: "pt", label: "ポルトガル語",   native: "Português",        voiceLangs: ["pt-BR", "pt-PT", "pt"] },
+  { id: "vi", label: "ベトナム語",     native: "Tiếng Việt",       voiceLangs: ["vi-VN", "vi"] },
+  { id: "id", label: "インドネシア語", native: "Bahasa Indonesia", voiceLangs: ["id-ID", "id"] },
+  { id: "th", label: "タイ語",         native: "ไทย",              voiceLangs: ["th-TH", "th"] },
+  { id: "ne", label: "ネパール語",     native: "नेपाली",            voiceLangs: ["ne-NP", "ne"] },
+  { id: "tl", label: "タガログ語",     native: "Filipino",         voiceLangs: ["fil-PH", "tl-PH", "fil", "tl"] },
+  { id: "my", label: "ミャンマー語",   native: "မြန်မာ",            voiceLangs: ["my-MM", "my"] },
+  { id: "hi", label: "ヒンディー語",   native: "हिन्दी",            voiceLangs: ["hi-IN", "hi"] },
+  { id: "km", label: "クメール語",     native: "ខ្មែរ",             voiceLangs: ["km-KH", "km"] },
+  { id: "fr", label: "フランス語",     native: "Français",         voiceLangs: ["fr-FR", "fr"] },
+];
+
+// ============================================================
+// 検査・フレーズ定義
+//  新しい検査（胃部X線など）はこの配列にオブジェクトを追加するだけ
+// ============================================================
+const EXAMS = [
+  {
+    id: "general",
+    name: "一般撮影",
+    ready: true,
+    phrases: [
+      {
+        icon: "🤰", jp: "妊娠はしていませんか？",
+        t: {
+          en: "Are you pregnant, or is there any possibility that you are pregnant?",
+          zh: "请问您有没有怀孕，或者有怀孕的可能？",
+          yue: "請問你有冇懷孕，或者有冇可能懷孕？",
+          ko: "임신 중이거나 임신 가능성이 있으신가요?",
+          es: "¿Está embarazada o existe la posibilidad de que lo esté?",
+          pt: "A senhora está grávida ou existe possibilidade de estar grávida?",
+          vi: "Chị có đang mang thai hoặc có khả năng mang thai không?",
+          id: "Apakah Anda sedang hamil atau ada kemungkinan hamil?",
+          th: "คุณกำลังตั้งครรภ์หรือมีโอกาสตั้งครรภ์หรือไม่คะ",
+          ne: "के तपाईं गर्भवती हुनुहुन्छ वा गर्भवती हुने सम्भावना छ?",
+          tl: "Ikaw po ba ay buntis, o may posibilidad na buntis?",
+          my: "ကိုယ်ဝန်ရှိပါသလား၊ ကိုယ်ဝန်ရှိနိုင်ခြေရှိပါသလား။",
+          hi: "क्या आप गर्भवती हैं या गर्भवती होने की कोई संभावना है?",
+          km: "តើអ្នកមានផ្ទៃពោះ ឬអាចមានផ្ទៃពោះដែរឬទេ?",
+          fr: "Êtes-vous enceinte, ou y a-t-il une possibilité que vous le soyez ?",
+        }
+      },
+      {
+        icon: "📿", jp: "ネックレス、ブラのワイヤー、ボタン、湿布、エレキバンなどを外してください",
+        t: {
+          en: "Please remove necklaces, bras with metal wires, buttons, medicated patches, and magnetic patches.",
+          zh: "请取下项链、有钢圈的内衣、纽扣、药贴和磁疗贴。",
+          yue: "請除低頸鏈、有鋼圈嘅胸圍、鈕扣、藥貼同磁石貼。",
+          ko: "목걸이, 와이어가 있는 브래지어, 단추, 파스, 자석 파스 등을 빼 주세요.",
+          es: "Por favor, quítese collares, sujetadores con aros, botones, parches medicinales y parches magnéticos.",
+          pt: "Por favor, retire colares, sutiãs com aro, botões, adesivos medicinais e emplastros magnéticos.",
+          vi: "Vui lòng tháo dây chuyền, áo ngực có gọng, cúc áo, miếng dán thuốc và miếng dán nam châm.",
+          id: "Silakan lepaskan kalung, bra berkawat, kancing, koyo, dan koyo magnet.",
+          th: "กรุณาถอดสร้อยคอ เสื้อชั้นในที่มีโครงลวด กระดุม แผ่นแปะยา และแผ่นแม่เหล็กออกค่ะ",
+          ne: "कृपया सिक्री, तारवाला ब्रा, टाँक, औषधि प्याच र चुम्बकीय प्याच निकाल्नुहोस्।",
+          tl: "Pakitanggal po ang kuwintas, bra na may wire, butones, patch na gamot, at magnetic patch.",
+          my: "လည်ဆွဲ၊ သံချောင်းပါသော ဘော်လီ၊ ကြယ်သီး၊ ဆေးကပ်ခွာနှင့် သံလိုက်ကပ်ခွာများကို ချွတ်ပေးပါ။",
+          hi: "कृपया गले की चेन, तार वाली ब्रा, बटन, दर्द की पट्टी और चुंबकीय पैच उतार दें।",
+          km: "សូមដោះខ្សែក អាវទ្រនាប់មានលួស ឡេវ បន្ទះបិទថ្នាំ និងបន្ទះមេដែកចេញ។",
+          fr: "Veuillez retirer les colliers, soutiens-gorge à armatures, boutons, patchs médicaux et patchs magnétiques.",
+        }
+      },
+      {
+        icon: "👕", jp: "金具やプラスチックがない検査着に着替えてください",
+        t: {
+          en: "Please change into an examination gown that has no metal or plastic parts.",
+          zh: "请换上没有金属和塑料的检查服。",
+          yue: "請換上冇金屬同塑膠嘅檢查衫。",
+          ko: "금속이나 플라스틱이 없는 검사복으로 갈아입어 주세요.",
+          es: "Por favor, cámbiese y póngase una bata de examen sin metal ni plástico.",
+          pt: "Por favor, troque de roupa e vista um avental de exame sem metal nem plástico.",
+          vi: "Vui lòng thay áo khám bệnh không có kim loại và nhựa.",
+          id: "Silakan berganti ke pakaian pemeriksaan yang tidak memiliki logam dan plastik.",
+          th: "กรุณาเปลี่ยนเป็นชุดตรวจที่ไม่มีโลหะและพลาสติกค่ะ",
+          ne: "कृपया धातु र प्लास्टिक नभएको जाँच पोशाकमा फेर्नुहोस्।",
+          tl: "Pakipalitan po ang damit ng examination gown na walang metal at plastik.",
+          my: "သတ္တုနှင့် ပလတ်စတစ် မပါသော စစ်ဆေးရေးဝတ်စုံသို့ လဲပေးပါ။",
+          hi: "कृपया ऐसे जांच गाउन में बदल लें जिसमें धातु या प्लास्टिक न हो।",
+          km: "សូមផ្លាស់ប្តូរទៅសម្លៀកបំពាក់ពិនិត្យ ដែលគ្មានលោហៈ និងផ្លាស្ទិក។",
+          fr: "Veuillez vous changer et mettre une blouse d'examen sans métal ni plastique.",
+        }
+      },
+      {
+        icon: "🗣️", jp: "検査中に息止めの合図を出します",
+        t: {
+          en: "During the examination, I will give you signals to hold your breath.",
+          zh: "检查中我会提示您屏住呼吸。",
+          yue: "檢查期間我會示意你忍住呼吸。",
+          ko: "검사 중에 숨을 참으라는 신호를 드리겠습니다.",
+          es: "Durante el examen, le indicaré cuándo contener la respiración.",
+          pt: "Durante o exame, vou avisar quando for preciso prender a respiração.",
+          vi: "Trong khi chụp, tôi sẽ ra hiệu để anh chị nín thở.",
+          id: "Selama pemeriksaan, saya akan memberi aba-aba untuk menahan napas.",
+          th: "ระหว่างการตรวจ จะมีสัญญาณให้กลั้นหายใจค่ะ",
+          ne: "जाँचको बेला सास रोक्न संकेत दिनेछु।",
+          tl: "Habang nag-eeksamen, bibigyan ko po kayo ng senyas para pigilin ang paghinga.",
+          my: "စစ်ဆေးနေစဉ် အသက်ရှူရပ်ရန် အချက်ပြပါမည်။",
+          hi: "जांच के दौरान मैं सांस रोकने का संकेत दूंगा।",
+          km: "ពេលពិនិត្យ ខ្ញុំនឹងផ្តល់សញ្ញាឱ្យទប់ដង្ហើម។",
+          fr: "Pendant l'examen, je vous indiquerai quand retenir votre respiration.",
+        }
+      },
+      {
+        icon: "😮‍💨", jp: "息を吸って、止めてください",
+        t: {
+          en: "Please breathe in, and hold your breath.",
+          zh: "请吸气，然后屏住呼吸。",
+          yue: "請吸氣，然後忍住呼吸。",
+          ko: "숨을 들이마시고, 멈추세요.",
+          es: "Inspire y contenga la respiración, por favor.",
+          pt: "Inspire e prenda a respiração, por favor.",
+          vi: "Xin hãy hít vào và nín thở.",
+          id: "Silakan tarik napas, lalu tahan.",
+          th: "กรุณาหายใจเข้า แล้วกลั้นหายใจค่ะ",
+          ne: "कृपया सास तान्नुहोस् र रोक्नुहोस्।",
+          tl: "Huminga po kayo nang malalim, at pigilin ang hininga.",
+          my: "အသက်ရှူသွင်းပြီး ရပ်ထားပါ။",
+          hi: "कृपया सांस अंदर लें और रोकें।",
+          km: "សូមស្រូបខ្យល់ចូល ហើយទប់ដង្ហើម។",
+          fr: "Inspirez et retenez votre respiration, s'il vous plaît.",
+        }
+      },
+      {
+        icon: "💨", jp: "息を吸って、吐いて、止めてください",
+        t: {
+          en: "Please breathe in, breathe out, and hold your breath.",
+          zh: "请吸气，再呼气，然后屏住呼吸。",
+          yue: "請吸氣，呼氣，然後忍住呼吸。",
+          ko: "숨을 들이마시고, 내쉬고, 멈추세요.",
+          es: "Inspire, espire y contenga la respiración, por favor.",
+          pt: "Inspire, expire e prenda a respiração, por favor.",
+          vi: "Xin hãy hít vào, thở ra, rồi nín thở.",
+          id: "Silakan tarik napas, buang napas, lalu tahan.",
+          th: "กรุณาหายใจเข้า หายใจออก แล้วกลั้นหายใจค่ะ",
+          ne: "कृपया सास तान्नुहोस्, छोड्नुहोस्, अनि रोक्नुहोस्।",
+          tl: "Huminga po nang malalim, ibuga, at pigilin ang hininga.",
+          my: "အသက်ရှူသွင်း၊ ရှူထုတ်ပြီး ရပ်ထားပါ။",
+          hi: "कृपया सांस अंदर लें, छोड़ें, और रोकें।",
+          km: "សូមស្រូបខ្យល់ចូល ដកដង្ហើមចេញ ហើយទប់ដង្ហើម។",
+          fr: "Inspirez, expirez, puis retenez votre respiration.",
+        }
+      },
+      {
+        icon: "😌", jp: "息をしても良いです",
+        t: {
+          en: "You may breathe now.",
+          zh: "可以正常呼吸了。",
+          yue: "而家可以呼吸喇。",
+          ko: "이제 숨을 쉬셔도 됩니다.",
+          es: "Ya puede respirar.",
+          pt: "Pode respirar normalmente.",
+          vi: "Bây giờ có thể thở bình thường.",
+          id: "Sekarang boleh bernapas seperti biasa.",
+          th: "หายใจได้ตามปกติแล้วค่ะ",
+          ne: "अब सास फेर्न सक्नुहुन्छ।",
+          tl: "Puwede na po kayong huminga.",
+          my: "ယခု အသက်ရှူနိုင်ပါပြီ။",
+          hi: "अब आप सांस ले सकते हैं।",
+          km: "ឥឡូវអាចដកដង្ហើមធម្មតាបានហើយ។",
+          fr: "Vous pouvez respirer normalement.",
+        }
+      },
+      {
+        icon: "✅", jp: "検査は終了です",
+        t: {
+          en: "The examination is finished. Thank you.",
+          zh: "检查结束了，谢谢。",
+          yue: "檢查完成喇，唔該晒。",
+          ko: "검사가 끝났습니다. 수고하셨습니다.",
+          es: "El examen ha terminado. Gracias.",
+          pt: "O exame terminou. Obrigado.",
+          vi: "Đã chụp xong. Cảm ơn anh chị.",
+          id: "Pemeriksaan sudah selesai. Terima kasih.",
+          th: "การตรวจเสร็จสิ้นแล้วค่ะ ขอบคุณค่ะ",
+          ne: "जाँच सकियो। धन्यवाद।",
+          tl: "Tapos na po ang eksamen. Salamat po.",
+          my: "စစ်ဆေးမှု ပြီးပါပြီ။ ကျေးဇူးတင်ပါသည်။",
+          hi: "जांच पूरी हो गई है। धन्यवाद।",
+          km: "ការពិនិត្យបានបញ្ចប់ហើយ។ សូមអរគុណ។",
+          fr: "L'examen est terminé. Merci.",
+        }
+      },
+    ]
+  },
+  { id: "stomach", name: "胃部X線検査", ready: false },
+  { id: "ct",      name: "CT検査",      ready: false },
+  { id: "mri",     name: "MRI検査",     ready: false },
+];
+
+// ============================================================
+// 状態
+// ============================================================
+let selectedLang = null;
+let selectedExam = null;
+let lastUtteranceInfo = null;   // {text, voiceLang} 「もう一度」用
+let voices = [];
+
+// ============================================================
+// 音声合成
+// ============================================================
+function refreshVoices() {
+  voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  renderLangGrid();
+  updateVoiceWarning();
+}
+
+function findVoice(lang) {
+  for (const code of lang.voiceLangs) {
+    const lower = code.toLowerCase();
+    // 完全一致 → 前方一致 の順で探す
+    let v = voices.find(v => v.lang.toLowerCase().replace("_", "-") === lower);
+    if (v) return v;
+    v = voices.find(v => v.lang.toLowerCase().replace("_", "-").startsWith(lower));
+    if (v) return v;
+  }
+  return null;
+}
+
+function speak(text, lang) {
+  if (!window.speechSynthesis) {
+    alert("この端末は音声合成に対応していません。");
+    return;
+  }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voice = findVoice(lang);
+  if (voice) {
+    u.voice = voice;
+    u.lang = voice.lang;
+  } else {
+    u.lang = lang.voiceLangs[0];
+  }
+  u.rate = parseFloat(document.getElementById("rateSlider").value);
+  u.onend = u.onerror = () => clearSpeakingHighlight();
+  lastUtteranceInfo = { text, lang };
+  speechSynthesis.speak(u);
+}
+
+function clearSpeakingHighlight() {
+  document.querySelectorAll(".phrase-btn.speaking").forEach(b => b.classList.remove("speaking"));
+}
+
+// ============================================================
+// 画面1：言語・検査選択
+// ============================================================
+function renderLangGrid() {
+  const grid = document.getElementById("langGrid");
+  grid.innerHTML = "";
+  LANGUAGES.forEach(lang => {
+    const btn = document.createElement("div");
+    btn.className = "lang-btn" + (selectedLang === lang ? " selected" : "");
+    const hasVoice = voices.length ? !!findVoice(lang) : null;
+    const mark = hasVoice === null ? "" :
+      hasVoice ? '<span class="voice-mark voice-ok">♪ 音声あり</span>'
+               : '<span class="voice-mark voice-ng">音声なし</span>';
+    btn.innerHTML = `${lang.label}<span class="native">${lang.native}</span>${mark}`;
+    btn.onclick = () => {
+      selectedLang = lang;
+      renderLangGrid();
+      updateVoiceWarning();
+      updateStartBtn();
+      // 選択時に試し発声（音声確認を兼ねる）
+      const sample = EXAMS[0].phrases[7].t[lang.id];
+      if (findVoice(lang)) speak(sample, lang);
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function renderExamGrid() {
+  const grid = document.getElementById("examGrid");
+  grid.innerHTML = "";
+  EXAMS.forEach(exam => {
+    const btn = document.createElement("div");
+    btn.className = "exam-btn" + (selectedExam === exam ? " selected" : "") + (exam.ready ? "" : " disabled");
+    btn.innerHTML = exam.name + (exam.ready ? "" : "<small>準備中</small>");
+    btn.onclick = () => {
+      selectedExam = exam;
+      renderExamGrid();
+      updateStartBtn();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function updateVoiceWarning() {
+  const w = document.getElementById("voiceWarning");
+  if (selectedLang && voices.length && !findVoice(selectedLang)) {
+    w.style.display = "block";
+    w.textContent = `⚠ この端末に「${selectedLang.label}」の音声データが見つかりません。` +
+      `Androidの場合：設定 → システム → 言語と入力 → テキスト読み上げ → Google音声サービスで音声データを追加してください。` +
+      `代替エンジン（Google翻訳アプリの音声等）が使われる場合もあるため、まずタップして音が出るか確認してください。`;
+  } else {
+    w.style.display = "none";
+  }
+}
+
+function updateStartBtn() {
+  document.getElementById("startBtn").disabled = !(selectedLang && selectedExam);
+}
+
+// ============================================================
+// 画面2：フレーズ
+// ============================================================
+function renderPhraseScreen() {
+  document.getElementById("hdrExam").textContent = selectedExam.name;
+  document.getElementById("hdrLang").textContent = `${selectedLang.label}（${selectedLang.native}）`;
+  const grid = document.getElementById("phraseGrid");
+  grid.innerHTML = "";
+  selectedExam.phrases.forEach((p, i) => {
+    const btn = document.createElement("div");
+    btn.className = "phrase-btn";
+    const tr = p.t[selectedLang.id] || "";
+    btn.innerHTML =
+      `<span class="num">${i + 1}</span>` +
+      `<span class="icon">${p.icon}</span>` +
+      `<div class="jp">${p.jp}</div>` +
+      `<div class="tr">${tr}</div>`;
+    btn.onclick = () => {
+      clearSpeakingHighlight();
+      btn.classList.add("speaking");
+      speak(tr, selectedLang);
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+// ============================================================
+// イベント
+// ============================================================
+document.getElementById("startBtn").onclick = () => {
+  renderPhraseScreen();
+  showScreen("screen-talk");
+};
+document.getElementById("backBtn").onclick = () => {
+  speechSynthesis.cancel();
+  showScreen("screen-setup");
+};
+document.getElementById("repeatBtn").onclick = () => {
+  if (lastUtteranceInfo) speak(lastUtteranceInfo.text, lastUtteranceInfo.lang);
+};
+document.getElementById("stopBtn").onclick = () => {
+  speechSynthesis.cancel();
+  clearSpeakingHighlight();
+};
+document.getElementById("rateSlider").oninput = e => {
+  document.getElementById("rateVal").textContent = e.target.value;
+};
+
+// 初期化
+renderExamGrid();
+refreshVoices();
+if (window.speechSynthesis) {
+  speechSynthesis.onvoiceschanged = refreshVoices;
+}
+</script>
+</body>
+</html>
