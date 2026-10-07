@@ -181,6 +181,128 @@
   .rate-wrap input { width: 100%; }
 
   .phrase-area { padding-bottom: 96px; }
+
+  .talk-header .big-toggle {
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.5);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .talk-header .big-toggle.on { background: #fff; color: var(--accent); font-weight: bold; }
+
+  .phrase-btn .q-badge {
+    display: inline-block;
+    font-size: 10px;
+    background: #fff4d6;
+    color: #8a5a00;
+    border: 1px solid #e6c56b;
+    border-radius: 6px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .phrase-btn .answer {
+    display: none;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 6px;
+    padding: 3px 6px;
+  }
+  .phrase-btn .answer.show { display: inline-block; }
+  .answer.yes, .pv-result.yes { background: #e2f5e9; color: var(--ok); }
+  .answer.no, .pv-result.no { background: #fbe6e1; color: #c0392b; }
+  .answer.unknown, .pv-result.unknown { background: #eceff3; color: #556; }
+
+  /* ---------- 患者さんに見せる画面 ---------- */
+  .pv {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: #fff;
+    display: none;
+    flex-direction: column;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .pv.show { display: flex; }
+  .pv-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .pv-top .pv-num { font-size: 13px; color: var(--sub); }
+  .pv-top button {
+    border: 2px solid #ccd5e0;
+    background: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .pv-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+    padding: 12px 0;
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .pv-icon { font-size: 64px; line-height: 1; }
+  .pv-text {
+    font-size: clamp(26px, 7.5vw, 48px);
+    font-weight: bold;
+    line-height: 1.5;
+    color: #111;
+    word-break: break-word;
+  }
+  .pv-text.long { font-size: clamp(22px, 6vw, 40px); }
+  .pv-jp { font-size: 14px; color: var(--sub); line-height: 1.5; }
+  .pv-prompt { font-size: clamp(16px, 4.5vw, 22px); color: var(--accent-dark); font-weight: bold; margin-top: 4px; }
+  .pv-answers { display: none; width: 100%; flex-direction: column; gap: 12px; }
+  .pv-answers.show { display: flex; }
+  .pv-ans {
+    width: 100%;
+    border: none;
+    border-radius: 16px;
+    padding: 18px 12px;
+    font-size: clamp(24px, 7vw, 36px);
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .pv-ans small { display: block; font-size: 13px; font-weight: normal; opacity: .9; margin-top: 2px; }
+  .pv-ans.yes { background: #1a8f4a; }
+  .pv-ans.no { background: #c0392b; }
+  .pv-ans.unknown { background: #7a8794; font-size: clamp(20px, 5.5vw, 28px); }
+  .pv-result {
+    display: none;
+    width: 100%;
+    border-radius: 16px;
+    padding: 18px 12px;
+    text-align: center;
+  }
+  .pv-result.show { display: block; }
+  .pv-result .label { font-size: 14px; }
+  .pv-result .jp-ans { font-size: 44px; font-weight: bold; line-height: 1.3; }
+  .pv-result .tr-ans { font-size: 16px; }
+  .pv-result button {
+    margin-top: 12px;
+    border: 2px solid currentColor;
+    background: #fff;
+    color: inherit;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -208,6 +330,7 @@
       <div class="exam" id="hdrExam"></div>
       <div class="lang" id="hdrLang"></div>
     </div>
+    <button class="big-toggle" id="bigToggle">患者さんに見せる<br>画面：ON</button>
   </div>
 
   <div class="phrase-area">
@@ -222,6 +345,34 @@
         速さ <span id="rateVal">0.9</span>
         <input type="range" id="rateSlider" min="0.5" max="1.3" step="0.1" value="0.9">
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 患者さんに見せる画面 ================= -->
+<div class="pv" id="patientView">
+  <div class="pv-top">
+    <span class="pv-num" id="pvNum"></span>
+    <div>
+      <button id="pvReplay">🔊 もう一度</button>
+      <button id="pvClose">✕ 閉じる</button>
+    </div>
+  </div>
+  <div class="pv-body">
+    <div class="pv-icon" id="pvIcon"></div>
+    <div class="pv-text" id="pvText"></div>
+    <div class="pv-jp" id="pvJp"></div>
+    <div class="pv-answers" id="pvAnswers">
+      <div class="pv-prompt" id="pvPrompt"></div>
+      <button class="pv-ans yes" data-ans="yes"></button>
+      <button class="pv-ans no" data-ans="no"></button>
+      <button class="pv-ans unknown" data-ans="unknown"></button>
+    </div>
+    <div class="pv-result" id="pvResult">
+      <div class="label">患者さんの回答</div>
+      <div class="jp-ans" id="pvResultJp"></div>
+      <div class="tr-ans" id="pvResultTr"></div>
+      <button id="pvRetry">答え直してもらう</button>
     </div>
   </div>
 </div>
@@ -250,8 +401,31 @@ const LANGUAGES = [
 ];
 
 // ============================================================
+// 回答画面の文言（患者さんの言語）
+// ============================================================
+const ANSWER_TEXT = {
+  en:  { prompt: "Please tap your answer.",            yes: "Yes",          no: "No",        unknown: "I don't know" },
+  zh:  { prompt: "请点击您的回答。",                    yes: "是",           no: "不是",       unknown: "不知道" },
+  yue: { prompt: "請撳你嘅答案。",                      yes: "係",           no: "唔係",       unknown: "唔知" },
+  ko:  { prompt: "답을 눌러 주세요.",                   yes: "예",           no: "아니요",     unknown: "모르겠어요" },
+  es:  { prompt: "Toque su respuesta, por favor.",      yes: "Sí",           no: "No",        unknown: "No sé" },
+  pt:  { prompt: "Toque na sua resposta, por favor.",   yes: "Sim",          no: "Não",       unknown: "Não sei" },
+  vi:  { prompt: "Vui lòng chạm vào câu trả lời.",      yes: "Có",           no: "Không",     unknown: "Không biết" },
+  id:  { prompt: "Silakan sentuh jawaban Anda.",        yes: "Ya",           no: "Tidak",     unknown: "Tidak tahu" },
+  th:  { prompt: "กรุณาแตะคำตอบ",                       yes: "ใช่",          no: "ไม่ใช่",     unknown: "ไม่แน่ใจ" },
+  ne:  { prompt: "कृपया आफ्नो उत्तर थिच्नुहोस्।",          yes: "हो",           no: "होइन",      unknown: "थाहा छैन" },
+  tl:  { prompt: "Pakipindot po ang inyong sagot.",     yes: "Oo",           no: "Hindi",     unknown: "Hindi ko alam" },
+  my:  { prompt: "အဖြေကို နှိပ်ပေးပါ။",                   yes: "ဟုတ်ကဲ့",       no: "မဟုတ်ပါ",    unknown: "မသိပါ" },
+  hi:  { prompt: "कृपया अपना उत्तर दबाएँ।",               yes: "हाँ",           no: "नहीं",       unknown: "पता नहीं" },
+  km:  { prompt: "សូមចុចចម្លើយរបស់អ្នក។",                yes: "បាទ / ចាស",    no: "ទេ",        unknown: "មិនដឹង" },
+  fr:  { prompt: "Touchez votre réponse, s'il vous plaît.", yes: "Oui",      no: "Non",       unknown: "Je ne sais pas" },
+};
+const ANSWER_JP = { yes: "はい", no: "いいえ", unknown: "わからない" };
+
+// ============================================================
 // 検査・フレーズ定義
 //  新しい検査（胃部X線など）はこの配列にオブジェクトを追加するだけ
+//  question: true を付けると、はい／いいえの回答画面が出る
 // ============================================================
 const EXAMS = [
   {
@@ -260,7 +434,7 @@ const EXAMS = [
     ready: true,
     phrases: [
       {
-        icon: "🤰", jp: "妊娠はしていませんか？",
+        icon: "🤰", jp: "妊娠はしていませんか？", question: true,
         t: {
           en: "Are you pregnant, or is there any possibility that you are pregnant?",
           zh: "请问您有没有怀孕，或者有怀孕的可能？",
@@ -433,6 +607,16 @@ let selectedLang = null;
 let selectedExam = null;
 let lastUtteranceInfo = null;   // {text, voiceLang} 「もう一度」用
 let voices = [];
+let bigView = loadBigView();
+let pvPhrase = null;            // 患者さんに見せる画面に表示中のフレーズ
+let pvIndex = -1;
+
+function loadBigView() {
+  try { return localStorage.getItem("rvg-bigView") !== "off"; } catch (e) { return true; }
+}
+function saveBigView() {
+  try { localStorage.setItem("rvg-bigView", bigView ? "on" : "off"); } catch (e) {}
+}
 
 // ============================================================
 // 音声合成
@@ -553,15 +737,79 @@ function renderPhraseScreen() {
     btn.innerHTML =
       `<span class="num">${i + 1}</span>` +
       `<span class="icon">${p.icon}</span>` +
+      (p.question ? `<span class="q-badge">回答あり</span>` : "") +
       `<div class="jp">${p.jp}</div>` +
-      `<div class="tr">${tr}</div>`;
+      `<div class="tr">${tr}</div>` +
+      (p.question ? `<div class="answer" id="answer-${i}"></div>` : "");
     btn.onclick = () => {
       clearSpeakingHighlight();
       btn.classList.add("speaking");
       speak(tr, selectedLang);
+      if (bigView || p.question) openPatientView(p, i);
     };
     grid.appendChild(btn);
   });
+  updateBigToggle();
+}
+
+function updateBigToggle() {
+  const t = document.getElementById("bigToggle");
+  t.innerHTML = `患者さんに見せる<br>画面：${bigView ? "ON" : "OFF"}`;
+  t.classList.toggle("on", bigView);
+}
+
+// ============================================================
+// 患者さんに見せる画面
+// ============================================================
+function openPatientView(p, i) {
+  pvPhrase = p;
+  pvIndex = i;
+  const tr = p.t[selectedLang.id] || "";
+  const textEl = document.getElementById("pvText");
+  document.getElementById("pvNum").textContent = `${i + 1} / ${selectedExam.phrases.length}`;
+  document.getElementById("pvIcon").textContent = p.icon;
+  textEl.textContent = tr;
+  textEl.lang = selectedLang.voiceLangs[0];
+  textEl.classList.toggle("long", tr.length > 60);
+  document.getElementById("pvJp").textContent = p.jp;
+
+  const answers = document.getElementById("pvAnswers");
+  const result = document.getElementById("pvResult");
+  result.className = "pv-result";
+  if (p.question) {
+    const a = ANSWER_TEXT[selectedLang.id];
+    document.getElementById("pvPrompt").textContent = a.prompt;
+    answers.querySelectorAll(".pv-ans").forEach(b => {
+      const key = b.dataset.ans;
+      b.innerHTML = `${a[key]}<small>${ANSWER_JP[key]}</small>`;
+    });
+    answers.classList.add("show");
+  } else {
+    answers.classList.remove("show");
+  }
+  document.getElementById("patientView").classList.add("show");
+}
+
+function closePatientView() {
+  document.getElementById("patientView").classList.remove("show");
+  pvPhrase = null;
+}
+
+function recordAnswer(key) {
+  const a = ANSWER_TEXT[selectedLang.id];
+  document.getElementById("pvAnswers").classList.remove("show");
+  const result = document.getElementById("pvResult");
+  result.className = `pv-result show ${key}`;
+  document.getElementById("pvResultJp").textContent = ANSWER_JP[key];
+  document.getElementById("pvResultTr").textContent = a[key];
+
+  const badge = document.getElementById(`answer-${pvIndex}`);
+  if (badge) {
+    const now = new Date();
+    const hm = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
+    badge.textContent = `回答：${ANSWER_JP[key]}（${hm}）`;
+    badge.className = `answer show ${key}`;
+  }
 }
 
 function showScreen(id) {
@@ -579,6 +827,7 @@ document.getElementById("startBtn").onclick = () => {
 };
 document.getElementById("backBtn").onclick = () => {
   speechSynthesis.cancel();
+  closePatientView();
   showScreen("screen-setup");
 };
 document.getElementById("repeatBtn").onclick = () => {
@@ -587,6 +836,25 @@ document.getElementById("repeatBtn").onclick = () => {
 document.getElementById("stopBtn").onclick = () => {
   speechSynthesis.cancel();
   clearSpeakingHighlight();
+};
+document.getElementById("bigToggle").onclick = () => {
+  bigView = !bigView;
+  saveBigView();
+  updateBigToggle();
+};
+document.getElementById("pvClose").onclick = () => {
+  speechSynthesis.cancel();
+  clearSpeakingHighlight();
+  closePatientView();
+};
+document.getElementById("pvReplay").onclick = () => {
+  if (pvPhrase) speak(pvPhrase.t[selectedLang.id] || "", selectedLang);
+};
+document.querySelectorAll(".pv-ans").forEach(b => {
+  b.onclick = () => recordAnswer(b.dataset.ans);
+});
+document.getElementById("pvRetry").onclick = () => {
+  if (pvPhrase) openPatientView(pvPhrase, pvIndex);
 };
 document.getElementById("rateSlider").oninput = e => {
   document.getElementById("rateVal").textContent = e.target.value;
