@@ -165,6 +165,34 @@
     padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
   }
   .control-inner { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
+  .control-inner + .control-inner { margin-top: 6px; }
+  .hold-wrap { flex: 1; font-size: 12px; color: var(--sub); text-align: center; }
+  .hold-wrap select { font-size: 14px; padding: 4px 6px; border-radius: 6px; border: 1px solid #ccd5e0; margin-left: 4px; }
+
+  .phrase-btn .seq {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--accent-dark);
+    background: #eef5fb;
+    border-radius: 6px;
+    padding: 3px 6px;
+    display: inline-block;
+  }
+  .phrase-btn.waiting { border-color: #e0a100; background: #fff8e6; }
+  .phrase-btn.waiting .seq { background: #e0a100; color: #fff; font-weight: bold; }
+  .pv-countdown {
+    display: none;
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    background: #fff4d6;
+    border: 4px solid #e0a100;
+    color: #8a5a00;
+    font-size: 56px;
+    font-weight: bold;
+    line-height: 102px;
+    text-align: center;
+  }
+  .pv-countdown.show { display: block; }
   .ctl-btn {
     flex: 1;
     border: 2px solid var(--accent);
@@ -180,7 +208,7 @@
   .rate-wrap { flex: 1.2; font-size: 11px; color: var(--sub); text-align: center; }
   .rate-wrap input { width: 100%; }
 
-  .phrase-area { padding-bottom: 96px; }
+  .phrase-area { padding-bottom: 140px; }
 
   .talk-header .big-toggle {
     background: rgba(255,255,255,.18);
@@ -341,9 +369,23 @@
     <div class="control-inner">
       <button class="ctl-btn" id="repeatBtn">↺ もう一度</button>
       <button class="ctl-btn stop" id="stopBtn">■ 停止</button>
+    </div>
+    <div class="control-inner">
       <div class="rate-wrap">
         速さ <span id="rateVal">0.9</span>
         <input type="range" id="rateSlider" min="0.5" max="1.3" step="0.1" value="0.9">
+      </div>
+      <div class="hold-wrap">
+        息止め時間
+        <select id="holdSelect">
+          <option value="2">2秒</option>
+          <option value="3">3秒</option>
+          <option value="4">4秒</option>
+          <option value="5">5秒</option>
+          <option value="6">6秒</option>
+          <option value="8">8秒</option>
+          <option value="10">10秒</option>
+        </select>
       </div>
     </div>
   </div>
@@ -362,6 +404,7 @@
     <div class="pv-icon" id="pvIcon"></div>
     <div class="pv-text" id="pvText"></div>
     <div class="pv-jp" id="pvJp"></div>
+    <div class="pv-countdown" id="pvCountdown"></div>
     <div class="pv-answers" id="pvAnswers">
       <div class="pv-prompt" id="pvPrompt"></div>
       <button class="pv-ans yes" data-ans="yes"></button>
@@ -514,7 +557,7 @@ const EXAMS = [
         }
       },
       {
-        icon: "😮‍💨", jp: "息を吸って、止めてください",
+        icon: "😮‍💨", jp: "息を吸って、止めてください", release: "breathe",
         t: {
           en: "Please breathe in, and hold your breath.",
           zh: "请吸气，然后屏住呼吸。",
@@ -534,7 +577,7 @@ const EXAMS = [
         }
       },
       {
-        icon: "💨", jp: "息を吸って、吐いて、止めてください",
+        icon: "💨", jp: "息を吸って、吐いて、止めてください", release: "breathe",
         t: {
           en: "Please breathe in, breathe out, and hold your breath.",
           zh: "请吸气，再呼气，然后屏住呼吸。",
@@ -554,7 +597,7 @@ const EXAMS = [
         }
       },
       {
-        icon: "😌", jp: "息をしても良いです",
+        icon: "😌", jp: "息をしても良いです", id: "breathe",
         t: {
           en: "You may breathe now.",
           zh: "可以正常呼吸了。",
@@ -639,7 +682,8 @@ function findVoice(lang) {
   return null;
 }
 
-function speak(text, lang) {
+// onDone: 読み上げが終わったら呼ぶ（cancel で中断された場合は呼ばない）
+function speak(text, lang, onDone) {
   if (!window.speechSynthesis) {
     alert("この端末は音声合成に対応していません。");
     return;
@@ -654,9 +698,119 @@ function speak(text, lang) {
     u.lang = lang.voiceLangs[0];
   }
   u.rate = parseFloat(document.getElementById("rateSlider").value);
-  u.onend = u.onerror = () => clearSpeakingHighlight();
+
+  let finished = false;
+  let fallback = null;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(fallback);
+    clearSpeakingHighlight();
+    if (onDone) onDone();
+  };
+  u.onend = finish;
+  u.onerror = e => {
+    if (e.error === "interrupted" || e.error === "canceled") {
+      finished = true;
+      clearTimeout(fallback);
+      return;
+    }
+    finish();
+  };
+  // 端末によって onend が来ないことがあるため、文の長さから見積もった時間で保険をかける
+  if (onDone) fallback = setTimeout(finish, Math.max(4000, text.length * 150 / u.rate) + 3000);
+
   lastUtteranceInfo = { text, lang };
   speechSynthesis.speak(u);
+}
+
+// ============================================================
+// 息止め → 数秒後に「息をしても良いです」
+// ============================================================
+let holdSeconds = loadHoldSeconds();
+let seqToken = 0;          // 進行中の流れを識別する番号。中断するたびに増やす
+let countdownTimer = null;
+let lastAction = null;     // 「もう一度」用 {p, i}
+
+function loadHoldSeconds() {
+  try { return parseInt(localStorage.getItem("rvg-holdSeconds"), 10) || 3; } catch (e) { return 3; }
+}
+function saveHoldSeconds() {
+  try { localStorage.setItem("rvg-holdSeconds", String(holdSeconds)); } catch (e) {}
+}
+
+function cancelSequence() {
+  seqToken++;
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+  document.querySelectorAll(".phrase-btn.waiting").forEach(b => b.classList.remove("waiting"));
+  document.getElementById("pvCountdown").classList.remove("show");
+  updateSeqLabels();
+}
+
+function findRelease(p) {
+  return p.release ? selectedExam.phrases.find(x => x.id === p.release) : null;
+}
+
+function seqLabel(rel) {
+  return `▶ ${holdSeconds}秒後に「${rel.jp}」`;
+}
+
+function updateSeqLabels() {
+  if (!selectedExam) return;
+  selectedExam.phrases.forEach((p, i) => {
+    const el = document.getElementById(`seq-${i}`);
+    const rel = findRelease(p);
+    if (el && rel) el.textContent = seqLabel(rel);
+  });
+}
+
+function playPhrase(p, i) {
+  cancelSequence();
+  const token = seqToken;
+  lastAction = { p, i };
+  const btn = document.getElementById(`phrase-${i}`);
+  clearSpeakingHighlight();
+  btn.classList.add("speaking");
+  if (bigView || p.question) openPatientView(p, i);
+
+  const tr = p.t[selectedLang.id] || "";
+  const rel = findRelease(p);
+  if (!rel) {
+    speak(tr, selectedLang);
+    return;
+  }
+  speak(tr, selectedLang, () => {
+    if (token !== seqToken) return;
+    startCountdown(token, btn, () => {
+      if (pvPhrase) showPatientText(rel);
+      speak(rel.t[selectedLang.id] || "", selectedLang);
+    });
+  });
+}
+
+function startCountdown(token, btn, onFinish) {
+  let left = holdSeconds;
+  const seqEl = btn.querySelector(".seq");
+  const pvCd = document.getElementById("pvCountdown");
+  const show = () => {
+    if (seqEl) seqEl.textContent = `⏱ あと ${left} 秒`;
+    pvCd.textContent = left;
+  };
+  btn.classList.add("waiting");
+  pvCd.classList.add("show");
+  show();
+  countdownTimer = setInterval(() => {
+    if (token !== seqToken) return;
+    left--;
+    if (left > 0) { show(); return; }
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+    btn.classList.remove("waiting");
+    pvCd.classList.remove("show");
+    updateSeqLabels();
+    onFinish();
+  }, 1000);
 }
 
 function clearSpeakingHighlight() {
@@ -733,22 +887,21 @@ function renderPhraseScreen() {
   selectedExam.phrases.forEach((p, i) => {
     const btn = document.createElement("div");
     btn.className = "phrase-btn";
+    btn.id = `phrase-${i}`;
     const tr = p.t[selectedLang.id] || "";
+    const rel = findRelease(p);
     btn.innerHTML =
       `<span class="num">${i + 1}</span>` +
       `<span class="icon">${p.icon}</span>` +
       (p.question ? `<span class="q-badge">回答あり</span>` : "") +
       `<div class="jp">${p.jp}</div>` +
       `<div class="tr">${tr}</div>` +
+      (rel ? `<div class="seq" id="seq-${i}">${seqLabel(rel)}</div>` : "") +
       (p.question ? `<div class="answer" id="answer-${i}"></div>` : "");
-    btn.onclick = () => {
-      clearSpeakingHighlight();
-      btn.classList.add("speaking");
-      speak(tr, selectedLang);
-      if (bigView || p.question) openPatientView(p, i);
-    };
+    btn.onclick = () => playPhrase(p, i);
     grid.appendChild(btn);
   });
+  lastAction = null;
   updateBigToggle();
 }
 
@@ -761,17 +914,21 @@ function updateBigToggle() {
 // ============================================================
 // 患者さんに見せる画面
 // ============================================================
-function openPatientView(p, i) {
-  pvPhrase = p;
-  pvIndex = i;
+function showPatientText(p) {
   const tr = p.t[selectedLang.id] || "";
   const textEl = document.getElementById("pvText");
-  document.getElementById("pvNum").textContent = `${i + 1} / ${selectedExam.phrases.length}`;
   document.getElementById("pvIcon").textContent = p.icon;
   textEl.textContent = tr;
   textEl.lang = selectedLang.voiceLangs[0];
   textEl.classList.toggle("long", tr.length > 60);
   document.getElementById("pvJp").textContent = p.jp;
+}
+
+function openPatientView(p, i) {
+  pvPhrase = p;
+  pvIndex = i;
+  document.getElementById("pvNum").textContent = `${i + 1} / ${selectedExam.phrases.length}`;
+  showPatientText(p);
 
   const answers = document.getElementById("pvAnswers");
   const result = document.getElementById("pvResult");
@@ -826,30 +983,39 @@ document.getElementById("startBtn").onclick = () => {
   showScreen("screen-talk");
 };
 document.getElementById("backBtn").onclick = () => {
+  cancelSequence();
   speechSynthesis.cancel();
   closePatientView();
   showScreen("screen-setup");
 };
-document.getElementById("repeatBtn").onclick = () => {
-  if (lastUtteranceInfo) speak(lastUtteranceInfo.text, lastUtteranceInfo.lang);
-};
+// 息止めの指示だけを繰り返して患者さんが息を止めたままにならないよう、流れごとやり直す
+function replayLast() {
+  if (lastAction) playPhrase(lastAction.p, lastAction.i);
+  else if (lastUtteranceInfo) speak(lastUtteranceInfo.text, lastUtteranceInfo.lang);
+}
+document.getElementById("repeatBtn").onclick = replayLast;
 document.getElementById("stopBtn").onclick = () => {
+  cancelSequence();
   speechSynthesis.cancel();
   clearSpeakingHighlight();
+};
+document.getElementById("holdSelect").value = String(holdSeconds);
+document.getElementById("holdSelect").onchange = e => {
+  holdSeconds = parseInt(e.target.value, 10);
+  saveHoldSeconds();
+  updateSeqLabels();
 };
 document.getElementById("bigToggle").onclick = () => {
   bigView = !bigView;
   saveBigView();
   updateBigToggle();
 };
+// 閉じても音声と息止めの流れは止めない（止めるときは「停止」ボタン）
 document.getElementById("pvClose").onclick = () => {
-  speechSynthesis.cancel();
-  clearSpeakingHighlight();
+  document.getElementById("pvCountdown").classList.remove("show");
   closePatientView();
 };
-document.getElementById("pvReplay").onclick = () => {
-  if (pvPhrase) speak(pvPhrase.t[selectedLang.id] || "", selectedLang);
-};
+document.getElementById("pvReplay").onclick = replayLast;
 document.querySelectorAll(".pv-ans").forEach(b => {
   b.onclick = () => recordAnswer(b.dataset.ans);
 });
